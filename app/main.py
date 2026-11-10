@@ -15,7 +15,7 @@ from . import builds, upstream, uploads, workflow
 from .enrich import compose_notes
 from .ingest import enrich_version, ingest, refresh_appstore, slug
 from .ipa import IPAError, inspect_ipa
-from .source import build_source
+from .source import CATEGORIES, app_category, build_source, category_id
 from .store import ICON_DIR, IPA_DIR, TMP_DIR, new_id, now_iso, store
 
 logging.basicConfig(level=logging.INFO)
@@ -146,6 +146,19 @@ def icon(filename: str):
     return FileResponse(path)
 
 
+FONT_DIR = STATIC / "fonts"
+
+
+@app.get("/fonts/{filename}")
+def font(filename: str):
+    """The page fonts. They never change under a name, so browsers may keep them a year."""
+    path = (FONT_DIR / filename).resolve()
+    if not path.is_relative_to(FONT_DIR.resolve()) or not path.is_file() or path.suffix != ".woff2":
+        raise HTTPException(404)
+    return FileResponse(path, media_type="font/woff2",
+                        headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
 @app.api_route("/base/{token}/{filename}", methods=["GET", "HEAD"])
 def uploaded_ipa(token: str, filename: str, request: Request):
     """A decrypted IPA you uploaded for a build. Only reachable with its secret link."""
@@ -176,6 +189,10 @@ def state(request: Request):
     data["public_url"] = base
     data["github_ready"] = bool(builds.GITHUB_TOKEN)
     data["public_reachable"] = uploads.reachable_from_internet(base)
+    data["categories"] = CATEGORIES
+    for a in data["apps"].values():
+        # what "Automatic" resolves to: the App Store's category, mapped
+        a["category_auto"] = app_category({**a, "category": ""})
     for u in data.get("uploads", []):
         u["url"] = uploads.link(base, u)
     return data
@@ -254,6 +271,9 @@ async def update_app(bundle_id: str, request: Request):
             re.compile(body["tweak_version_regex"])
         except re.error as e:
             raise HTTPException(400, f"Tweak version pattern is not a valid regex: {e}")
+    if "category" in body:
+        # store the id AltStore understands; "" means use the App Store's
+        body["category"] = category_id(body["category"])
     app_.update({k: v for k, v in body.items() if k in APP_FIELDS})
     store.save()
     return app_

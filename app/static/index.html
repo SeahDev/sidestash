@@ -3,34 +3,61 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <title>Apps</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preload" href="/fonts/sf-pro-text-regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/sf-pro-text-semibold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/sf-pro-display-bold.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-:root{--paper:#E9EDF1;--surface:#F7F9FB;--ink:#17202B;--steel:#566273;--line:#C9D1DA;--cobalt:#2B59C3;--cobalt-ink:#fff;color-scheme:light}
-@media (prefers-color-scheme:dark){:root{--paper:#12161B;--surface:#1A2027;--ink:#E4E8EE;--steel:#94A0AF;--line:#313A45;--cobalt:#6E95F0;--cobalt-ink:#0E1420;color-scheme:dark}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "Schibsted Grotesk",ui-sans-serif,system-ui,sans-serif;
-  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
-main{max-width:620px;margin:0 auto;padding:48px 20px}
-h1{font-size:44px;letter-spacing:-.03em;line-height:1.05;margin:0 0 8px;font-weight:800}
-p{color:var(--steel);margin:0 0 24px}
-.add{display:inline-block;background:var(--cobalt);color:var(--cobalt-ink);text-decoration:none;font-weight:600;padding:10px 18px;border-radius:8px}
-.add:focus-visible,.copy:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
-.copy{margin-left:8px;background:none;border:1px solid var(--line);color:var(--ink);font:inherit;padding:9px 14px;border-radius:8px;cursor:pointer}
-ul{list-style:none;padding:0;margin:40px 0 0}
-li{display:flex;gap:16px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
-img{width:64px;height:64px;border-radius:24%;background:var(--surface);flex:none;object-fit:cover}
-li strong{display:block;font-size:18px}
-li span{color:var(--steel);font-size:14px}
+/* SF Pro Text below 20px, SF Pro Display from 20px up, SF Mono for identifiers (built by scripts/build-fonts.py) */
+@font-face{font-family:"SF Pro Text";font-weight:400;font-display:swap;src:url(/fonts/sf-pro-text-regular.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Text";font-weight:500;font-display:swap;src:url(/fonts/sf-pro-text-medium.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Text";font-weight:600;font-display:swap;src:url(/fonts/sf-pro-text-semibold.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Text";font-weight:700;font-display:swap;src:url(/fonts/sf-pro-text-bold.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Display";font-weight:600;font-display:swap;src:url(/fonts/sf-pro-display-semibold.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Display";font-weight:700;font-display:swap;src:url(/fonts/sf-pro-display-bold.woff2) format("woff2")}
+@font-face{font-family:"SF Mono";font-weight:400;font-display:swap;src:url(/fonts/sf-mono-regular.woff2) format("woff2")}
+:root{
+  --bg:#ffffff; --bg-2:#f5f5f7; --fill:#ececf0; --sep-soft:#e8e8ed;
+  --text:#1d1d1f; --text-2:#6e6e73; --accent:#0071e3; --accent-pressed:#0062c4; --pill:#f0f0f5; --icon-edge:rgba(0,0,0,.14);
+  --font:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+  --font-display:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#000000; --bg-2:#161617; --fill:#232326; --sep-soft:#2c2c2e;
+    --text:#f5f5f7; --text-2:#a1a1a6; --accent:#2997ff; --accent-pressed:#0a84ff; --pill:#2c2c2e; --icon-edge:rgba(255,255,255,.22); color-scheme:dark; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.47 var(--font);letter-spacing:-.01em}
+main{max-width:680px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 48px) 20px calc(env(safe-area-inset-bottom) + 48px)}
+.eyebrow{font-size:13px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.02em;margin:0 0 2px}
+h1{font:700 34px/1.12 var(--font-display);letter-spacing:-.022em;margin:0}
+.sub{color:var(--text-2);font-size:17px;margin:6px 0 20px}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.pill{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 20px;border:0;border-radius:980px;background:var(--pill);
+  color:var(--accent);font:600 15px/1 var(--font);cursor:pointer;text-decoration:none;white-space:nowrap}
+.pill.filled{background:var(--accent);color:#fff}
+.pill.filled:hover{background:var(--accent-pressed)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h2{font:700 22px/1.2 var(--font-display);letter-spacing:-.016em;margin:40px 0 0;padding-bottom:10px;border-bottom:1px solid var(--sep-soft)}
+ul{list-style:none;padding:0;margin:0}
+li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--sep-soft)}
+li:last-child{border-bottom:0}
+img{width:64px;height:64px;border-radius:22.5%;background:var(--fill);object-fit:cover;box-shadow:0 0 0 .5px var(--icon-edge)}
+li strong{display:block;font-size:17px;font-weight:600;letter-spacing:-.02em}
+li span{display:block;color:var(--text-2);font-size:13px;font-variant-numeric:tabular-nums}
+@media (max-width:480px){ h1{font-size:30px} .pill{flex:1;min-height:44px} img{width:56px;height:56px} }
 </style>
 </head>
 <body>
 <main>
+  <p class="eyebrow">Source</p>
   <h1 id="name">Apps</h1>
-  <p id="sub"></p>
-  <a class="add" id="add" href="#">Add to AltStore</a><button class="copy" id="copy">Copy source URL</button>
+  <p class="sub" id="sub"></p>
+  <div class="actions"><a class="pill filled" id="add" href="#">Add to AltStore</a><button class="pill" id="copy">Copy link</button></div>
+  <h2>Apps</h2>
   <ul id="apps"></ul>
 </main>
 <script>
@@ -43,7 +70,7 @@ fetch("/source.json").then(r=>r.json()).then(src=>{
   document.getElementById("add").href = "altstore://source?url=" + encodeURIComponent(url);
   document.getElementById("copy").onclick = async e => { await navigator.clipboard.writeText(url); e.target.textContent = "Copied"; };
   document.getElementById("apps").innerHTML = src.apps.map(a=>`<li><img alt="" src="${esc(a.iconURL)}">
-    <div><strong>${esc(a.name)}</strong><span>${esc(a.versions[0].version)} · ${esc(a.subtitle)}</span></div></li>`).join("");
+    <div><strong>${esc(a.name)}</strong><span>${esc(a.subtitle)}</span><span>${[a.versions[0].version, a.developerName].filter(Boolean).map(esc).join(" · ")}</span></div></li>`).join("");
 });
 </script>
 </body>

@@ -5,6 +5,41 @@ import re
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "").rstrip("/")
 
 
+# The categories AltStore-format sources recognize (anything else shows as Other),
+# with the names the dashboard shows for them.
+CATEGORIES = {
+    "developer": "Developer", "entertainment": "Entertainment", "games": "Games",
+    "lifestyle": "Lifestyle", "other": "Other", "photo-video": "Photo & Video",
+    "social": "Social", "utilities": "Utilities",
+}
+# App Store genres (primaryGenreName) that have a match; the rest are Other.
+GENRES = {
+    "Developer Tools": "developer", "Entertainment": "entertainment", "Music": "entertainment",
+    "Games": "games", "Lifestyle": "lifestyle", "Health & Fitness": "lifestyle",
+    "Food & Drink": "lifestyle", "Shopping": "lifestyle", "Travel": "lifestyle",
+    "Photo & Video": "photo-video", "Graphics & Design": "photo-video",
+    "Social Networking": "social", "Utilities": "utilities", "Productivity": "utilities",
+}
+
+
+def category_id(value: str) -> str:
+    """'Social', 'photo & video' or 'photo-video' -> 'photo-video'; unknown -> '' ."""
+    v = (value or "").strip().lower()
+    if v in CATEGORIES:
+        return v
+    by_name = {name.lower(): cid for cid, name in CATEGORIES.items()}
+    return by_name.get(v, "")
+
+
+def app_category(app: dict) -> str:
+    """The category you picked, else the App Store's (mapped), else other."""
+    chosen = category_id(app.get("category", ""))
+    if chosen:
+        return chosen
+    genre = (app.get("appstore") or {}).get("primaryGenreName", "")
+    return GENRES.get(genre, "other")
+
+
 def screenshot_entry(url: str) -> dict:
     """AltStore 2 screenshot object. Sizes help store apps lay them out before loading;
     App Store image links end in e.g. /392x696bb.jpg, which gives them."""
@@ -77,7 +112,7 @@ def build_source(data: dict, base_url: str) -> dict:
             "localizedDescription": app.get("localizedDescription", "").strip() or default_description(app, latest),
             "iconURL": icon,
             "tintColor": app.get("tintColor", "").lstrip("#"),
-            "category": app.get("category", "other"),
+            "category": app_category(app),
             # AltStore 2 objects, plus the AltStore 1 list of links that many store apps still read.
             "screenshots": [screenshot_entry(u) for u in screenshots],
             "screenshotURLs": screenshots,

@@ -70,7 +70,7 @@ variables below.
 
 The dashboard has a password, but there's no reason to put it on the internet.
 Forward only these paths publicly: `/`, `/source.json`, `/apps.json`, `/ipa/`,
-`/icons/`, and `/base/` if you upload decrypted IPAs for builds (GitHub
+`/icons/`, `/fonts/`, and `/base/` if you upload decrypted IPAs for builds (GitHub
 downloads them from there). Use the LAN address (`http://<unraid-ip>:8686/admin`) or
 Tailscale for the dashboard.
 
@@ -79,7 +79,7 @@ Cloudflare Tunnel example (`config.yml`):
 ```yaml
 ingress:
   - hostname: apps.example.com
-    path: ^/(source\.json|apps\.json|ipa/.*|icons/.*|base/.*)?$
+    path: ^/(source\.json|apps\.json|ipa/.*|icons/.*|fonts/.*|base/.*)?$
     service: http://192.168.1.10:8686
   - service: http_status:404
 ```
@@ -178,4 +178,6 @@ Sparkle 1.4.0) is read from them to find the matching GitHub release.
 - **No warranty.** This is a personal project; it comes as is.
 - **The Docker image is published** to GHCR by `.github/workflows/docker.yml`
   on every push to `main`. It contains only the code, never `.env` or `/data`.
+- **Fonts:** SF Pro and SF Mono, bundled as web fonts in `app/static/fonts` so every
+  device gets them. `scripts/build-fonts.py` rebuilds them from the fonts installed on a Mac.
 - Data lives in `/data`: `db.json`, `ipas/`, `icons/`, `uploads/`. Back up that folder.

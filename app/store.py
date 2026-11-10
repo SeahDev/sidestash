@@ -67,10 +67,10 @@ DEFAULT_APP = {
     "developerName": "",
     "localizedDescription": "",
     "tintColor": "#3A6EA5",
-    "category": "utilities",
+    "category": "",                     # blank: use the App Store's category
     "iconURL": "",
     "screenshots": [],
-    "use_appstore_screenshots": False,
+    "use_appstore_screenshots": True,
     "github_repo": "",
     "appstore_bundle_id": "",
     "base_app_name": "",

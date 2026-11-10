@@ -2,196 +2,323 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sidestash · Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Sidestash</title>
+<link rel="preload" href="/fonts/sf-pro-text-regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/sf-pro-text-semibold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/sf-pro-display-bold.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+/* SF Pro Text below 20px, SF Pro Display from 20px up, SF Mono for identifiers (built by scripts/build-fonts.py) */
+@font-face{font-family:"SF Pro Text";font-weight:400;font-display:swap;src:url(/fonts/sf-pro-text-regular.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Text";font-weight:500;font-display:swap;src:url(/fonts/sf-pro-text-medium.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Text";font-weight:600;font-display:swap;src:url(/fonts/sf-pro-text-semibold.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Text";font-weight:700;font-display:swap;src:url(/fonts/sf-pro-text-bold.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Display";font-weight:600;font-display:swap;src:url(/fonts/sf-pro-display-semibold.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Display";font-weight:700;font-display:swap;src:url(/fonts/sf-pro-display-bold.woff2) format("woff2")}
+@font-face{font-family:"SF Mono";font-weight:400;font-display:swap;src:url(/fonts/sf-mono-regular.woff2) format("woff2")}
+/* Product-page look: big rounded icons, bold titles, pill buttons, gray secondary text,
+   thin separators, blue only for things you can press. System font, nothing downloaded. */
 :root{
-  --paper:#E9EDF1; --surface:#F7F9FB; --sunk:#DFE4EA; --ink:#17202B; --steel:#566273; --line:#C9D1DA;
-  --cobalt:#2B59C3; --cobalt-ink:#fff; --ok:#1C7D52; --warn:#9A6412; --bad:#B6382A;
-  --radius-s:6px; --radius-m:12px;
-  --font:"Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  color-scheme: light;
+  --bg:#ffffff; --bg-2:#f5f5f7; --fill:#ececf0; --sep:#d2d2d7; --sep-soft:#e8e8ed;
+  --text:#1d1d1f; --text-2:#6e6e73; --text-3:#86868b;
+  --accent:#0071e3; --accent-pressed:#0062c4; --on-accent:#ffffff; --pill:#f0f0f5;
+  --green:#248a3d; --orange:#b25000; --red:#d70015;
+  --bar:rgba(255,255,255,.82);
+  --font:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+  --font-display:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  --icon-radius:22.5%; --icon-edge:rgba(0,0,0,.14);
+  color-scheme:light;
 }
-@media (prefers-color-scheme: dark){
-  :root{ --paper:#12161B; --surface:#1A2027; --sunk:#232A33; --ink:#E4E8EE; --steel:#94A0AF; --line:#313A45;
-    --cobalt:#6E95F0; --cobalt-ink:#0E1420; --ok:#4FC28C; --warn:#E0A84A; --bad:#EE7F6E; color-scheme: dark; }
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#000000; --bg-2:#161617; --fill:#232326; --sep:#424245; --sep-soft:#2c2c2e;
+    --text:#f5f5f7; --text-2:#a1a1a6; --text-3:#86868b;
+    --accent:#2997ff; --accent-pressed:#0a84ff; --on-accent:#ffffff; --pill:#2c2c2e;
+    --green:#30d158; --orange:#ff9f0a; --red:#ff453a;
+    --bar:rgba(22,22,23,.82); --icon-edge:rgba(255,255,255,.22); color-scheme:dark;
+  }
 }
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--font);font-variant-numeric:tabular-nums}
-button,input,textarea,select{font:inherit;color:inherit}
-a{color:var(--cobalt)}
-:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.47 var(--font);letter-spacing:-.01em}
+button,input,textarea,select{font:inherit;color:inherit;letter-spacing:inherit}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono);font-size:.9em;letter-spacing:0}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--text-2)}
+[hidden]{display:none!important}
 
-.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
-aside{border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow:auto}
-.brand{font-weight:800;font-size:19px;letter-spacing:-.02em;padding:0 8px}
-.brand small{display:block;font-weight:500;font-size:13px;color:var(--steel);letter-spacing:0}
-nav{display:flex;flex-direction:column;gap:2px}
-.navbtn{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--radius-s)}
-.navbtn:hover{background:var(--sunk)}
-.navbtn[aria-current="true"]{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
-.navbtn .meta{color:var(--steel);font-size:13px;margin-left:auto}
-.navbtn .meta.live{color:var(--warn);font-weight:600}
-.group-label{font-size:13px;color:var(--steel);padding:0 8px;margin-top:4px}
-.mini{width:32px;height:32px;border-radius:22%;background:var(--sunk);object-fit:cover;flex:none}
-.ph{display:grid;place-items:center;font-weight:800;color:var(--steel)}
-.mini.ph{font-size:15px}
+/* ---------- frame: sidebar on desktop, tab bar on phones ---------- */
+.shell{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;overflow:auto;background:var(--bg-2);border-right:1px solid var(--sep-soft);padding:22px 12px}
+.brand{font:700 21px/1.2 var(--font-display);letter-spacing:-.02em;padding:0 10px 18px}
+.side-nav{display:flex;flex-direction:column;gap:2px}
+.side-label{font-size:12px;font-weight:600;color:var(--text-3);padding:16px 10px 6px}
+.side-item{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;min-height:36px;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500}
+.side-item:hover{background:var(--fill)}
+.side-item[aria-current="true"]{background:var(--fill);color:var(--accent);font-weight:600}
+.side-item svg{width:20px;height:20px;flex:none;color:var(--accent)}
+.side-item .icon{width:24px;height:24px}
+.side-item .meta{margin-left:auto;font-size:12px;color:var(--text-3);font-weight:500}
+.tabbar{display:none}
+main{min-width:0;padding:34px clamp(20px,4vw,52px) 80px;max-width:1080px}
 
-main{padding:28px clamp(16px,4vw,48px) 80px;max-width:1180px;width:100%}
-.source-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m);padding:10px 12px;margin-bottom:28px}
-.source-bar code{font-size:14px;overflow-wrap:anywhere;flex:1;min-width:200px}
+/* ---------- type ---------- */
+.eyebrow{font-size:13px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.02em;margin:0 0 2px}
+.large-title{font:700 34px/1.12 var(--font-display);letter-spacing:-.022em;margin:0}
+.page-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.shelf{margin-top:38px}
+.shelf-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:10px;border-bottom:1px solid var(--sep)}
+.shelf-head h2{font:700 22px/1.2 var(--font-display);letter-spacing:-.016em;margin:0}
+.shelf-head .note{font-size:13px;color:var(--text-2)}
+.back{display:inline-flex;align-items:center;gap:2px;font-size:15px;color:var(--accent);background:none;border:0;padding:0;margin:0 0 18px;cursor:pointer;min-height:32px}
+.back::before{content:"";width:9px;height:9px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-right:6px}
 
-/* the loud element: app header */
-.app-head{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;margin-bottom:8px}
-.squircle{width:104px;height:104px;border-radius:24%;object-fit:cover;background:var(--sunk);
-  box-shadow:0 18px 40px -18px var(--tint,#000), 0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent)}
-.squircle.ph{font-size:46px}
-h1{font-size:40px;line-height:1.05;letter-spacing:-.03em;margin:0 0 6px;font-weight:800}
-.sub{color:var(--steel);margin:0}
-section.block{margin-top:40px}
-h2{font-size:21px;letter-spacing:-.015em;margin:0 0 4px}
-.block > .sub{margin-bottom:14px}
-h3{font-size:15px;margin:0 0 10px}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* ---------- buttons ---------- */
+.pill{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:30px;padding:0 16px;border:0;border-radius:980px;
+  background:var(--pill);color:var(--accent);font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;text-decoration:none}
+.pill:hover{text-decoration:none;filter:brightness(.97)}
+.pill.filled{background:var(--accent);color:var(--on-accent)}
+.pill.filled:hover{background:var(--accent-pressed);filter:none}
+.pill.danger{color:var(--red)}
+.pill.large{min-height:36px;padding:0 20px;font-size:15px}
+.pill:disabled,.pill.disabled{opacity:.4;cursor:default;pointer-events:none}
+.text-btn{background:none;border:0;padding:0;color:var(--accent);font-size:15px;cursor:pointer;min-height:32px}
+.text-btn:hover{text-decoration:underline}
+.text-btn.small{font-size:13px;min-height:24px}
 
-.btn{cursor:pointer;text-decoration:none;display:inline-block;border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:var(--radius-s);font-weight:600}
-.btn:hover{border-color:var(--steel)}
-.btn.primary{background:var(--cobalt);border-color:var(--cobalt);color:var(--cobalt-ink)}
-.btn.danger{color:var(--bad)}
-.btn.small{padding:4px 10px;font-size:13px}
-.btn:disabled,.btn.disabled{opacity:.5;cursor:default}
-.btn.disabled{pointer-events:none}
+/* ---------- app icons ---------- */
+.icon{border-radius:var(--icon-radius);object-fit:cover;background:var(--fill);flex:none;
+  box-shadow:0 0 0 .5px var(--icon-edge)}
+.icon.ph{display:grid;place-items:center;font-weight:600;color:var(--text-2)}
+.icon.s{width:28px;height:28px;font-size:13px}
+.icon.m{width:64px;height:64px;font-size:26px}
+.icon.l{width:128px;height:128px;font-size:52px}
 
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m);padding:18px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.grid3{display:grid;grid-template-columns:2fr 1.4fr 1fr;gap:12px}
-label.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--steel)}
-label.field input,label.field textarea,label.field select{padding:7px 9px;border:1px solid var(--line);border-radius:var(--radius-s);background:var(--paper);font-size:14px;width:100%}
-label.field textarea{min-height:110px;resize:vertical}
-label.field.wide{grid-column:1/-1}
-label.check{display:flex;gap:8px;align-items:center;font-size:14px}
-label.check.wide{grid-column:1/-1}
-.urlfield{display:flex;flex-flow:row wrap;gap:8px;align-items:flex-end}
-.urlfield .upbtn{margin-bottom:3px}
-.urlfield .progress{flex-basis:100%;margin-top:0}
+/* ---------- status: a dot and a word ---------- */
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)}
+.status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--text-3);flex:none}
+.status.ok::before{background:var(--green)} .status.busy::before{background:var(--orange)} .status.bad::before{background:var(--red)}
+.status.bad{color:var(--red)}
+@media (prefers-reduced-motion:no-preference){ .status.busy::before{animation:blink 1.4s ease-in-out infinite} }
+@keyframes blink{50%{opacity:.35}}
 
-/* overview */
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-top:20px;align-items:start}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
-.card-head{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
-.card-head .mini{width:48px;height:48px}
-.card-head h2{font-size:18px;margin:0}
-.card-status{font-size:14px;color:var(--steel);min-height:21px}
-.card-status a{white-space:nowrap}
-.card details{border-top:1px solid var(--line);padding-top:12px}
-.card summary{cursor:pointer;font-weight:600;list-style:none;display:flex;align-items:center;gap:8px}
-.card summary::-webkit-details-marker{display:none}
-.card summary::before{content:"▸";color:var(--steel);transition:transform .15s}
-.card details[open] summary::before{transform:rotate(90deg)}
-.card details > .runform{margin-top:12px}
-.card .grid2{grid-template-columns:1fr}
-.warnbox{border:1px solid color-mix(in srgb,var(--warn) 50%,var(--line));background:color-mix(in srgb,var(--warn) 8%,var(--surface));border-radius:var(--radius-s);padding:10px 12px;font-size:14px;margin:0}
-@media (max-width:420px){ .cards{grid-template-columns:1fr} }
-label.field small{font-size:12px;color:var(--steel);opacity:.8;font-family:ui-monospace,monospace}
-.hint{font-size:13px;color:var(--steel);margin:8px 0 0}
-.empty{color:var(--steel);padding:8px 0;margin:0}
-.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
-.pill.ok{color:var(--ok)}.pill.warn{color:var(--warn)}.pill.bad{color:var(--bad)}.pill.dim{color:var(--steel)}
+/* ---------- lockups: an app in a list ---------- */
+.lockups{list-style:none;margin:0;padding:0}
+.lockup{border-bottom:1px solid var(--sep-soft)}
+.lockup:last-child{border-bottom:0}
+.lockup-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 0}
+.lockup-name{font-size:17px;font-weight:600;color:var(--text);letter-spacing:-.02em;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+.lockup-name:hover{text-decoration:underline}
+.lockup-sub{font-size:13px;color:var(--text-2);margin-top:1px}
+.lockup-lines{display:flex;flex-direction:column;gap:3px;margin-top:5px}
+.lockup-actions{display:flex;gap:8px;align-items:center}
+.update-why{font-size:13px;color:var(--text-2)}
+.pill .chevron{width:11px;height:11px;margin-right:-4px;transition:transform .2s}
+.pill[aria-expanded="true"] .chevron{transform:rotate(180deg)}
+.update-why a{white-space:nowrap}
 
-/* actions control panel */
-.actions-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:start}
-.divider{border:0;border-top:1px solid var(--line);margin:16px 0}
-.runcard{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-m);padding:16px}
-.steps{list-style:none;margin:12px 0;padding:0;display:grid;gap:10px}
-.steps li{display:grid;grid-template-columns:18px 1fr;gap:10px;align-items:start;color:var(--steel)}
-.steps li .dot{width:14px;height:14px;margin-top:4px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
-.steps li.done{color:var(--ink)} .steps li.done .dot{background:var(--ok);border-color:var(--ok)}
-.steps li.now{color:var(--ink);font-weight:600} .steps li.now .dot{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 25%,var(--surface))}
-.steps li.fail{color:var(--bad);font-weight:600} .steps li.fail .dot{background:var(--bad);border-color:var(--bad)}
-@media (prefers-reduced-motion:no-preference){ .steps li.now .dot{animation:pulse 1.6s ease-in-out infinite} }
-@keyframes pulse{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--warn) 22%,transparent)}}
-.runerr{color:var(--bad);font-size:14px;margin:6px 0 0}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-weight:600;color:var(--steel)}
+/* ---------- product page header ---------- */
+.product{display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:center}
+.product h1{font:700 32px/1.12 var(--font-display);letter-spacing:-.022em;margin:0}
+.product .subtitle{font-size:19px;color:var(--text-2);margin:4px 0 0;letter-spacing:-.015em}
+.product .dev{display:inline-block;font-size:15px;margin-top:6px}
+.product .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;align-items:center}
+.facts{display:flex;margin:28px 0 0;padding:14px 0;border-top:1px solid var(--sep-soft);border-bottom:1px solid var(--sep-soft);overflow-x:auto;scrollbar-width:none}
+.facts::-webkit-scrollbar{display:none}
+.fact{flex:1 0 auto;min-width:112px;padding:0 18px;text-align:center;border-left:1px solid var(--sep-soft)}
+.fact:first-child{border-left:0}
+.fact .k{font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.03em}
+.fact .v{font:600 19px/1.3 var(--font-display);color:var(--text-2);margin-top:2px;white-space:nowrap}
+.fact .s{font-size:12px;color:var(--text-3);white-space:nowrap}
 
-/* listing editor + preview */
-.listing-grid{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
-.preview-wrap{position:sticky;top:20px}
-.preview-label{font-size:13px;color:var(--steel);margin:0 0 6px}
-.pv{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;overflow:hidden}
-.pv-head{display:grid;grid-template-columns:76px 1fr auto;gap:12px;align-items:center}
-.pv-icon{width:76px;height:76px;border-radius:24%;object-fit:cover;background:var(--sunk)}
-.pv-icon.ph{font-size:32px}
-.pv-name{font-weight:700;font-size:18px;line-height:1.2}
-.pv-dev,.pv-sub{font-size:13px;color:var(--steel)}
-.pv-get{background:var(--t);color:#fff;border:0;border-radius:999px;padding:5px 16px;font-weight:700;font-size:14px}
-.pv-shots{display:flex;gap:8px;overflow-x:auto;margin:14px -18px 0;padding:0 18px}
-.pv-shots img{height:200px;border-radius:12px;flex:none;background:var(--sunk)}
-.pv-desc{font-size:14px;margin:14px 0 0;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
-.pv-new{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;font-size:14px}
-.pv-new b{display:block;font-size:16px}
-.pv-new .meta{font-size:13px;color:var(--steel)}
-.pv-new p{white-space:pre-wrap;margin:6px 0 0;max-height:150px;overflow:auto}
+/* ---------- segmented control ---------- */
+.segmented{display:inline-grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--fill);border-radius:9px;padding:2px;margin:26px 0 4px}
+.segmented button{border:0;background:none;padding:6px 22px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text);min-height:30px}
+.segmented button[aria-selected="true"]{background:var(--bg);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.06)}
+@media (prefers-color-scheme:dark){ .segmented button[aria-selected="true"]{background:#636366} }
 
-/* versions */
-.drop{display:block;border:2px dashed var(--line);border-radius:var(--radius-m);padding:18px;text-align:center;cursor:pointer;background:var(--surface);transition:border-color .15s, background .15s;margin-bottom:22px}
-.drop.over{border-color:var(--cobalt);background:color-mix(in srgb,var(--cobalt) 8%,var(--surface))}
-.drop strong{display:block}
-.drop span{color:var(--steel);font-size:14px}
-.progress{height:4px;background:var(--sunk);border-radius:2px;overflow:hidden;margin-top:10px;display:none}
-.progress i{display:block;height:100%;width:0;background:var(--cobalt);transition:width .2s}
-.timeline{list-style:none;margin:0;padding:0 0 0 18px;border-left:2px solid var(--line)}
-.timeline li{position:relative;padding:0 0 22px 18px}
-.timeline li::before{content:"";position:absolute;left:-26px;top:7px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--steel)}
-.timeline li.live::before{background:var(--cobalt);border-color:var(--cobalt)}
-.timeline li.hidden{opacity:.55}
-.v-title{font-weight:700;font-size:17px}
-.v-meta{color:var(--steel);font-size:13px}
-.notes{white-space:pre-wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-s);padding:10px 12px;margin:8px 0;max-height:220px;overflow:auto;font-size:14px}
-textarea.notes{width:100%;max-height:none;min-height:160px;resize:vertical}
+/* ---------- forms: grouped boxes ---------- */
+.two-col{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:28px;align-items:start}
+.group{background:var(--bg-2);border-radius:18px;padding:20px}
+.group + .group{margin-top:16px}
+.group-title{font-size:17px;font-weight:600;letter-spacing:-.02em;margin:0 0 14px}
+.group-sub{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:22px 0 12px}
+.group-sub h4{margin:0;font-size:15px;font-weight:600}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.grid.three{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+.grid.three > :first-child{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2);min-width:0}
+.field.wide{grid-column:1/-1}
+.field small{font-family:var(--mono);font-size:11.5px;font-weight:400;color:var(--text-3);letter-spacing:0}
+.field input,.field select,.field textarea{width:100%;min-height:38px;padding:0 12px;border:1px solid var(--sep);border-radius:10px;background:var(--bg);color:var(--text);font-size:15px;font-weight:400;letter-spacing:-.01em}
+.field textarea{padding:9px 12px;min-height:110px;resize:vertical;line-height:1.45}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.check{display:flex;gap:10px;align-items:center;font-size:15px;color:var(--text);min-height:32px}
+.check input{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.check.wide{grid-column:1/-1}
+.urlfield{display:flex;flex-flow:row wrap;gap:10px;align-items:flex-end}
+.urlfield > .field{flex:1 1 240px}
+.urlfield .pill{min-height:38px}
+.form-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;align-items:center}
+.hint{font-size:13px;color:var(--text-2);margin:10px 0 0}
+.callout{margin:14px 0 0;padding:12px 14px;border-radius:12px;background:var(--bg);font-size:13px;color:var(--text-2);border:1px solid var(--sep-soft)}
+.callout.bad{color:var(--red)}
+.empty{color:var(--text-2);margin:0;padding:18px 0}
+.err{color:var(--red);font-size:13px}
+.progress{height:4px;border-radius:2px;background:var(--fill);overflow:hidden;margin-top:8px;display:none;flex-basis:100%}
+.progress i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.runform{background:var(--bg-2);border-radius:18px;padding:18px;margin:0 0 16px}
+.runform .meta{font-size:13px;color:var(--text-2);margin:0 0 14px}
 
-.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:var(--radius-s);font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
-.toast.show{opacity:1}
-.toast.err{background:var(--bad);color:#fff}
+/* ---------- build run ---------- */
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--sep-soft);font-size:15px;color:var(--text-3)}
+.steps li:last-child{border-bottom:0}
+.steps .mark{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--sep);flex:none;display:grid;place-items:center}
+.steps li.done{color:var(--text)} .steps li.done .mark{background:var(--green);border-color:var(--green)}
+.steps li.done .mark::after{content:"";width:9px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+.steps li.now{color:var(--text);font-weight:600} .steps li.now .mark{border-color:var(--orange);border-width:2px}
+.steps li.fail{color:var(--red);font-weight:600} .steps li.fail .mark{background:var(--red);border-color:var(--red)}
+.history{list-style:none;margin:6px 0 0;padding:0}
+.history li{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--sep-soft);font-size:14px}
 
-@media (max-width:960px){ .actions-grid,.listing-grid{grid-template-columns:1fr} .preview-wrap{position:static} }
-@media (max-width:800px){
-  .shell{grid-template-columns:1fr}
-  aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
-  .app-head{grid-template-columns:auto 1fr}.app-head .head-actions{grid-column:1/-1}
-  .squircle{width:72px;height:72px}.squircle.ph{font-size:32px}h1{font-size:30px}
-  .grid3{grid-template-columns:1fr}
+/* ---------- listing preview ---------- */
+.preview{position:sticky;top:20px}
+.preview .label{font-size:13px;font-weight:600;color:var(--text-2);margin:0 0 10px}
+.pv{background:var(--bg);border:1px solid var(--sep-soft);border-radius:18px;padding:18px;overflow:hidden}
+.pv-head{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
+.pv-name{font:700 20px/1.2 var(--font-display);letter-spacing:-.02em}
+.pv-sub{font-size:14px;color:var(--text-2)}
+.pv-dev{font-size:13px;color:var(--accent)}
+.pv-shots{display:flex;gap:10px;overflow-x:auto;margin:16px -18px 0;padding:0 18px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.pv-shots::-webkit-scrollbar{display:none}
+.pv-shots img{height:220px;aspect-ratio:auto 392/696;object-fit:cover;border-radius:14px;flex:none;background:var(--fill);border:.5px solid var(--sep-soft);scroll-snap-align:start}
+.pv h3{font:700 17px/1.2 var(--font-display);margin:18px 0 6px}
+.pv-desc{font-size:14px;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;margin:0}
+.pv-new .meta{display:flex;justify-content:space-between;font-size:13px;color:var(--text-2)}
+.pv-new p{white-space:pre-wrap;font-size:14px;margin:6px 0 0;max-height:160px;overflow:auto}
+
+/* ---------- versions ---------- */
+.drop{display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px dashed var(--sep);border-radius:18px;padding:22px;text-align:center;cursor:pointer;margin:18px 0 6px}
+.drop.over{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.drop strong{font-size:15px}
+.drop span{font-size:13px;color:var(--text-2)}
+.drop .progress{width:100%}
+.versions{list-style:none;margin:0;padding:0}
+.versions li{padding:18px 0;border-bottom:1px solid var(--sep-soft)}
+.versions li:last-child{border-bottom:0}
+.versions li.hidden{opacity:.5}
+.v-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
+.v-name{font-size:17px;font-weight:600;letter-spacing:-.02em}
+.v-name .tag{margin-left:6px}
+.v-date{font-size:14px;color:var(--text-2)}
+.v-meta{font-size:13px;color:var(--text-2);margin-top:2px}
+.tag{display:inline-block;font-size:12px;font-weight:600;color:var(--text-2);background:var(--fill);border-radius:6px;padding:1px 7px;vertical-align:1px;letter-spacing:0}
+.tag.ok{color:var(--green)}
+.notes{white-space:pre-wrap;margin:10px 0;max-height:220px;overflow:auto;font-size:14px}
+textarea.notes{width:100%;max-height:none;min-height:160px;resize:vertical;padding:10px 12px;border:1px solid var(--sep);border-radius:10px;background:var(--bg)}
+.v-actions{display:flex;flex-wrap:wrap;gap:8px}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);max-width:calc(100vw - 32px);padding:11px 18px;border-radius:14px;
+  background:rgba(29,29,31,.92);color:#f5f5f7;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);z-index:30}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.err{background:var(--red);color:#fff}
+
+/* ---------- tablet ---------- */
+@media (max-width:980px){
+  /* minmax(0,…) so a wide child (the screenshot row) scrolls instead of widening the page */
+  .two-col{grid-template-columns:minmax(0,1fr)}
+  .preview{position:static;min-width:0}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- phone ---------- */
+@media (max-width:720px){
+  .shell{display:block}
+  .sidebar{display:none}
+  main{padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 96px)}
+  .tabbar{display:grid;grid-template-columns:repeat(3,1fr);position:fixed;left:0;right:0;bottom:0;z-index:20;
+    padding:6px 8px calc(env(safe-area-inset-bottom) + 4px);background:var(--bar);border-top:.5px solid var(--sep);
+    -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
+  .tabbar button{all:unset;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:46px;justify-content:center;font-size:10.5px;font-weight:500;color:var(--text-3);cursor:pointer}
+  .tabbar button svg{width:26px;height:26px}
+  .tabbar button[aria-current="true"]{color:var(--accent)}
+  .toast{bottom:calc(env(safe-area-inset-bottom) + 76px)}
+  .large-title{font-size:30px}
+  .shelf{margin-top:30px}
+  .shelf-head h2{font-size:20px}
+
+  /* lockups: the pill drops under the text so names never squeeze */
+  .lockup-row{grid-template-columns:auto minmax(0,1fr);row-gap:10px}
+  .lockup-actions{grid-column:2}
+  .icon.m{width:56px;height:56px}
+
+  .product{grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:start}
+  .icon.l{width:96px;height:96px;font-size:40px}
+  .product h1{font-size:24px}
+  .product .subtitle{font-size:15px}
+  .product .actions{margin-top:12px}
+  .facts{margin-top:20px}
+  .fact{min-width:96px;padding:0 12px}
+  .fact .v{font-size:17px}
+  .segmented{display:grid;width:100%}
+
+  .group{padding:16px;border-radius:14px}
+  .grid,.grid.three{grid-template-columns:1fr}
+  /* 16px+ text in fields stops iOS from zooming in on focus */
+  .field input,.field select,.field textarea{font-size:17px;min-height:44px}
+  .pill{min-height:34px}
+  .pill.large{min-height:44px;flex:1}
+  .form-actions .pill{min-height:44px;flex:1 1 auto}
+  .urlfield .pill{min-height:44px}
+  .check{min-height:44px}
+  .back{min-height:44px;margin-bottom:6px}
+  .pv-shots img{height:200px}
+  .v-actions .pill{min-height:36px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 <div class="shell">
-  <aside>
-    <div class="brand">Sidestash<small>Your AltStore source</small></div>
-    <nav id="nav"></nav>
+  <aside class="sidebar">
+    <div class="brand">Sidestash</div>
+    <nav class="side-nav" id="nav" aria-label="Pages"></nav>
   </aside>
   <main id="main"><p class="empty">Loading…</p></main>
 </div>
+<nav class="tabbar" id="tabbar" aria-label="Pages"></nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 let S = null;
 let view = localStorage.getItem("view") || "";
+const appTab = {};             // which part of each app page is showing: build, listing or versions
 const $ = (s, el=document) => el.querySelector(s);
 const $$ = (s, el=document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmtSize = n => n > 1e9 ? (n/1e9).toFixed(2)+" GB" : (n/1e6).toFixed(1)+" MB";
 const fmtDate = s => s ? new Date(s).toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"}) : "";
+const fmtDay = s => s ? new Date(s).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"}) : "";
 const ACTIVE = b => !["done","failed"].includes(b.status);
+const plural = (n, word) => `${n} ${word}${n===1?"":"s"}`;
+
+const ICONS = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>',
+  add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>',
+  source: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h10"/><circle cx="18" cy="17.5" r="2"/></svg>',
+};
 
 function toast(msg, err=false){
   const t = $("#toast"); t.textContent = msg; t.className = "toast show" + (err?" err":"");
-  clearTimeout(t._h); t._h = setTimeout(()=>t.className="toast", err?6000:2500);
+  clearTimeout(t._h); t._h = setTimeout(()=>t.className="toast", err?6000:2600);
 }
 async function api(path, opts={}){
   // X-Sidestash marks requests as coming from this dashboard (see _from_other_site in main.py)
@@ -214,327 +341,117 @@ function iconImg(url, name, cls){
   const ph = `<span class="${cls} ph" aria-hidden="true">${esc((name||"?").trim()[0]||"?")}</span>`;
   return url ? `<img class="${cls}" alt="" src="${esc(url)}" onerror="this.outerHTML='${ph.replace(/"/g,"&quot;")}'">` : ph;
 }
-const field = (k,label,val,ph="",cls="") => `<label class="field ${cls}">${esc(label)}<input data-f="${k}" value="${esc(val)}" placeholder="${esc(ph)}"></label>`;
+const field = (k,label,val,ph="",cls="") => `<label class="field ${cls}">${esc(label)}<input data-f="${k}" value="${esc(val)}" placeholder="${esc(ph)}" autocapitalize="off" autocorrect="off"></label>`;
+const shelfHead = (title, right="") => `<div class="shelf-head"><h2>${title}</h2>${right}</div>`;
+const sortedApps = () => Object.values(S.apps).sort((a,b)=>(a.order||0)-(b.order||0));
 
 /* ---------------- layout ---------------- */
 function render(){
-  const apps = Object.values(S.apps).sort((a,b)=>(a.order||0)-(b.order||0));
+  const apps = sortedApps();
   if(!view || (view.startsWith("app:") && !S.apps[view.slice(4)])) view = "home";
   renderNav(apps);
-  const url = S.public_url + "/source.json";
-  const bar = `<div class="source-bar"><span class="v-meta">Source URL</span><code>${esc(url)}</code>
-    <button class="btn small" data-copy="${esc(url)}">Copy</button>
-    <a class="btn small" href="/source.json" target="_blank" rel="noopener">View JSON</a></div>`;
-  $("#main").innerHTML = bar + (view.startsWith("app:") ? appView(S.apps[view.slice(4)]) : view==="new" ? newAppView() : view==="home" ? homeView(apps) : sourceView());
+  $("#main").innerHTML = view.startsWith("app:") ? appView(S.apps[view.slice(4)]) : view==="new" ? newAppView() : view==="home" ? homeView(apps) : sourceView();
   wire();
   schedulePoll();
 }
 
 function renderNav(apps){
-  $("#nav").innerHTML = `<button class="navbtn" aria-current="${view==="home"}" data-view="home"><span class="mini ph" aria-hidden="true">▦</span><span>Overview</span></button>
-    <div class="group-label">Apps</div>
-    ${apps.map(a=>{
-      const v = versionsOf(a.bundleIdentifier)[0], running = buildsOf(a.bundleIdentifier).some(ACTIVE);
-      return `<button class="navbtn" aria-current="${view==="app:"+a.bundleIdentifier}" data-view="app:${esc(a.bundleIdentifier)}">
-        ${iconImg(iconFor(a),a.name,"mini")}<span>${esc(a.name)}</span>
-        <span class="meta ${running?"live":""}">${running?"Building":v?esc(v.version):"Empty"}</span></button>`}).join("")}
-    <button class="navbtn" aria-current="${view==="new"}" data-view="new"><span class="mini ph" aria-hidden="true">+</span><span>Add app</span></button>
-    <div class="group-label">Source</div>
-    <button class="navbtn" aria-current="${view==="source"}" data-view="source">Source settings</button>`;
-  $$("#nav [data-view]").forEach(b=>b.onclick=()=>setView(b.dataset.view));
-}
-
-function appView(a){
-  const st = a.appstore || {};
-  return `
-  <header class="app-head" style="--tint:${esc(a.tintColor||"#000")}">
-    ${iconImg(iconFor(a),a.name,"squircle")}
-    <div><h1>${esc(a.name)}</h1><p class="sub">${esc(a.bundleIdentifier)}</p>
-      <p class="v-meta">${st.version?`App Store: ${esc(a.base_app_name||st.trackName)} ${esc(st.version)}`:"App Store info not loaded yet"}</p></div>
-    <div class="head-actions"><button class="btn" data-act="appstore">Refresh App Store info</button></div>
-  </header>
-
-  <section class="block">
-    <h2>GitHub Actions</h2>
-    <p class="sub">Run the build in your fork. When it finishes, the server downloads the .ipa and publishes it to the source.</p>
-    <div class="actions-grid">
-      <div class="panel" id="actions">${actionsForm(a)}</div>
-      <div id="runs">${runsPanel(a)}</div>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>Listing</h2>
-    <p class="sub">What people see when they open this app in the source. The preview updates as you type.</p>
-    <div class="listing-grid">
-      <div class="panel" id="listing">${listingForm(a)}</div>
-      <div class="preview-wrap"><p class="preview-label">Preview</p><div id="preview"></div></div>
-    </div>
-  </section>
-
-  <section class="block">
-    <h2>Versions</h2>
-    <p class="sub">Everything published for this app, newest version first.</p>
-    <label class="drop" id="drop" tabindex="0"><input type="file" accept=".ipa" id="ipaFile" hidden>
-      <strong>Upload an .ipa you built yourself</strong><span>Drop it here or click to choose a file.</span>
-      <div class="progress" id="prog"><i></i></div></label>
-    <div id="versions">${versionsList(a)}</div>
-  </section>`;
-}
-
-/* ---------------- GitHub Actions panel ---------------- */
-/* the inputs form, shared by the app page and the overview cards */
-function inputsMarkup(a){
-  const b = a.build || {inputs:{}};
-  if(schemaFor(b)) return schemaInputs(b);
-  const inputs = Object.entries(b.inputs||{});
-  const isBool = v => v==="true" || v==="false";
-  if(!inputs.length) return `<p class="empty">${b.fork_repo&&b.workflow ? (wfErrors[a.bundleIdentifier] ? esc(wfErrors[a.bundleIdentifier]) : "Reading the workflow's inputs…") : "Fill in your fork and workflow file, then save. The workflow's inputs will appear here."}</p>`;
-  return `<div class="grid2">${inputs.map(([k,v])=> isBool(v)
-    ? `<label class="field">${esc(k)}<select data-in="${esc(k)}"><option ${v==="true"?"selected":""}>true</option><option ${v==="false"?"selected":""}>false</option></select></label>`
-    : /url/i.test(k) ? urlField(k, esc(k), v, "Paste a link or upload the decrypted .ipa")
-    : `<label class="field">${esc(k)}<input data-in="${esc(k)}" value="${esc(v)}" spellcheck="false" placeholder="Blank uses the workflow default"></label>`).join("")}</div>`;
-}
-/* a link field with an Upload button: the server stores the file and fills in a private link */
-function urlField(name, labelHtml, value, placeholder){
-  return `<div class="field wide urlfield"><label class="field" style="flex:1">${labelHtml}
-      <input data-in="${esc(name)}" value="${esc(value)}" spellcheck="false" placeholder="${esc(placeholder)}"></label>
-    <label class="btn small upbtn">Upload .ipa<input type="file" accept=".ipa" hidden data-upfor="${esc(name)}"></label>
-    <div class="progress"><i></i></div></div>`;
-}
-function actionsForm(a){
-  const b = a.build || {inputs:{}};
-  const running = buildsOf(a.bundleIdentifier).some(ACTIVE);
-  return `
-    <h3>Workflow</h3>
-    <div class="grid3">
-      ${field("build.fork_repo","Your fork",b.fork_repo,"you/"+(a.github_repo||"repo").split("/").pop())}
-      ${field("build.workflow","Workflow file",b.workflow,"build.yml")}
-      ${field("build.ref","Branch",b.ref||"main")}
-    </div>
-    ${b.fork_repo && a.upstream ? `<div class="row" style="gap:8px;margin-top:10px;font-size:14px">${forkLine(a)}</div>` : ""}
-    <hr class="divider">
-    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Inputs</h3>
-      ${b.fork_repo&&b.workflow&&S.github_ready?`<button class="btn small" data-act="loadWorkflow">Reload from workflow</button>`:""}</div>
-    ${inputsMarkup(a)}
-    <div class="row" style="margin-top:16px">
-      <button class="btn primary" data-act="build" ${!S.github_ready||running?"disabled":""}>Run build</button>
-      <button class="btn" data-act="saveActions">Save without running</button>
-    </div>
-    ${!S.github_ready?`<p class="hint" style="color:var(--bad)">Builds are off: set GITHUB_TOKEN on the container, then restart it.</p>`
-      : running?`<p class="hint">A build is already running for this app.</p>`
-      : schemaFor(b) ? "" : `<p class="hint">Blank URL fields use the workflow's own default link, if it has one.</p>`}`;
-}
-/* inputs read from the workflow file itself (POST /api/apps/:id/workflow) */
-const wfErrors = {}, wfTried = new Set();
-const schemaFor = b => { const s = b.schema;
-  return s && s.fork_repo===b.fork_repo && s.workflow===b.workflow && s.ref===(b.ref||"main") ? s : null };
-function schemaInputs(b){
-  const s = schemaFor(b);
-  if(!s.inputs.length) return `<p class="empty">This workflow takes no inputs.</p>`;
-  const val = i => (b.inputs||{})[i.name] ?? i.default;
-  const label = i => `${esc(i.description||i.name)}${i.required?" *":""}<small>${esc(i.name)}</small>`;
-  return `<div class="grid2">${s.inputs.map(i=>{
-    const v = val(i);
-    if(i.type==="boolean") return `<label class="check wide"><input type="checkbox" data-in="${esc(i.name)}" ${v==="true"?"checked":""}> ${esc(i.description||i.name)}</label>`;
-    if(i.type==="choice") return `<label class="field">${label(i)}<select data-in="${esc(i.name)}">${i.options.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
-    if(/url|link/i.test(i.name) || /\b(url|link)\b/i.test(i.description||""))
-      return urlField(i.name, label(i), v, i.default ? "Default: "+i.default : "Paste a link or upload the .ipa");
-    const wide = (i.description||"").length > 40;
-    return `<label class="field ${wide?"wide":""}">${label(i)}<input data-in="${esc(i.name)}" value="${esc(v)}" spellcheck="false"
-      ${i.type==="number"?'inputmode="decimal"':""} placeholder="${i.default?"Default: "+esc(i.default):i.required?"Required":"Optional"}"></label>`;
-  }).join("")}</div>`;
-}
-async function loadWorkflow(appId, quiet=false){
-  try{ await api(`/api/apps/${appId}/workflow`, {method:"POST"}); delete wfErrors[appId]; if(!quiet) toast("Inputs loaded from the workflow") }
-  catch(e){ wfErrors[appId] = e.message; if(!quiet) toast(e.message,true) }
-  return load();
-}
-
-const STEPS = ["Start the workflow on GitHub","Build on GitHub","Download the .ipa to the server","Publish to the source"];
-function stepIndex(b){
-  if(b.status==="done") return 4;
-  if(b.status==="importing") return 2;
-  if(b.status==="failed") return !b.run_id ? 0 : b.conclusion==="success" ? 2 : 1;
-  return b.run_id ? 1 : 0;
-}
-function runsPanel(a){
-  const builds = buildsOf(a.bundleIdentifier);
-  if(!builds.length) return `<div class="runcard"><h3>Current run</h3><p class="empty">No builds yet. Fill in your fork and press Run build.</p></div>`;
-  const cur = builds[0], idx = stepIndex(cur), failed = cur.status==="failed";
-  const steps = STEPS.map((s,i)=>{
-    const cls = i<idx ? "done" : i===idx ? (failed?"fail":(cur.status==="done"?"done":"now")) : "";
-    return `<li class="${cls}"><span class="dot"></span><span>${esc(s)}</span></li>`}).join("");
-  const result = cur.status==="done" ? `Published ${cur.imported.map(i=>esc(i.version)+(i.duplicate?" (already published)":"")).join(" and ")}.` : "";
-  const older = builds.slice(1,6);
-  return `<div class="runcard">
-    <div class="row" style="justify-content:space-between"><h3 style="margin:0">${ACTIVE(cur)?"Current run":"Last run"}</h3>
-      <span class="v-meta">Started ${fmtDate(cur.started)}</span></div>
-    <ol class="steps">${steps}</ol>
-    ${failed?`<p class="runerr">${esc(cur.error||"The build failed.")}</p>`:""}
-    ${result?`<p class="hint" style="color:var(--ok)">${result}</p>`:""}
-    <div class="row" style="margin-top:12px">
-      ${cur.run_url?`<a class="btn small" href="${esc(cur.run_url)}" target="_blank" rel="noopener">Open log on GitHub</a>`:""}
-      ${failed?`<button class="btn small" data-retry="${cur.id}">Check again</button>`:""}
-    </div>
-    ${older.length?`<hr class="divider"><h3>Earlier runs</h3><table><tbody>${older.map(b=>{
-      const cls = b.status==="done"?"ok":b.status==="failed"?"bad":"warn";
-      return `<tr><td>${fmtDate(b.started)}</td><td><span class="pill ${cls}">${b.status==="done"?"Published":b.status==="failed"?"Failed":"Running"}</span></td>
-        <td style="text-align:right">${b.run_url?`<a href="${esc(b.run_url)}" target="_blank" rel="noopener">Log</a>`:""}</td></tr>`}).join("")}</tbody></table>`:""}
-  </div>`;
-}
-
-/* ---------------- listing editor + preview ---------------- */
-function listingForm(a){
-  return `<div class="grid2">
-      ${field("name","Name",a.name)}${field("developerName","Developer",a.developerName)}
-      ${field("subtitle","Subtitle",a.subtitle,"","wide")}
-      ${field("tintColor","Tint color",a.tintColor,"#3A6EA5")}${field("category","Category",a.category,"social, entertainment…")}
-      ${field("iconURL","Icon URL",a.iconURL,"Blank uses the App Store icon","wide")}
-    </div>
-    <label class="field" style="margin-top:12px">Description<textarea data-f="localizedDescription" style="min-height:160px">${esc(a.localizedDescription)}</textarea></label>
-    <label class="field" style="margin-top:12px">Screenshot URLs, one per line<textarea data-f="screenshots">${esc((a.screenshots||[]).join("\n"))}</textarea></label>
-    <label class="check" style="margin-top:10px"><input type="checkbox" data-f="use_appstore_screenshots" ${a.use_appstore_screenshots?"checked":""}> Use the App Store screenshots when the list above is empty</label>
-    <hr class="divider">
-    <h3>Changelogs</h3>
-    <div class="grid2">
-      ${field("github_repo","Changelog repo",a.github_repo,"owner/name")}
-      ${field("base_app_name","Base app name",a.base_app_name,"YouTube")}
-      ${field("appstore_bundle_id","App Store bundle ID",a.appstore_bundle_id)}
-      ${field("tweak_version_regex","Tweak version pattern",a.tweak_version_regex)}
-    </div>
-    <p class="hint">The tweak version is read from the .ipa file name with that pattern, then matched to a GitHub release.</p>
-    <div class="row" style="margin-top:16px">
-      <button class="btn primary" data-act="saveListing">Save listing</button>
-      <label class="btn">Upload icon<input type="file" accept="image/*" id="iconFile" hidden></label>
-      ${versionsOf(a.bundleIdentifier).length?"":`<button class="btn danger" data-act="deleteApp">Remove app</button>`}
-    </div>`;
-}
-
-function renderPreview(a){
-  const f = collect($("#listing"));
-  const latest = versionsOf(a.bundleIdentifier).find(v=>v.published);
-  const shots = (f.screenshots && f.screenshots.length) ? f.screenshots : (f.use_appstore_screenshots ? (a.appstore?.screenshotUrls||[]) : []);
-  const tint = /^#?[0-9a-f]{6}$/i.test(f.tintColor||"") ? "#"+f.tintColor.replace("#","") : "var(--cobalt)";
-  $("#preview").innerHTML = `<div class="pv" style="--t:${tint}">
-    <div class="pv-head">${iconImg(f.iconURL || a.appstore?.artworkUrl512 || "", f.name, "pv-icon")}
-      <div><div class="pv-name">${esc(f.name||"Untitled")}</div><div class="pv-dev">${esc(f.developerName)}</div><div class="pv-sub">${esc(f.subtitle)}</div></div>
-      <button class="pv-get" tabindex="-1" aria-hidden="true">Get</button></div>
-    ${shots.length?`<div class="pv-shots">${shots.slice(0,6).map(u=>`<img alt="" src="${esc(u)}">`).join("")}</div>`:""}
-    ${f.localizedDescription?`<p class="pv-desc">${esc(f.localizedDescription)}</p>`:""}
-    <div class="pv-new"><b>What's new</b>${latest
-      ? `<span class="meta">Version ${esc(latest.version)} · ${fmtDate(latest.date)} · ${fmtSize(latest.size)}</span><p>${esc(latest.localizedDescription)}</p>`
-      : `<span class="meta">Nothing published yet</span>`}</div></div>`;
-}
-
-/* ---------------- versions ---------------- */
-function versionsList(a){
-  const vs = versionsOf(a.bundleIdentifier);
-  if(!vs.length) return `<p class="empty">Nothing published yet. Run a build above or upload an .ipa.</p>`;
-  const firstLive = vs.find(v=>v.published);
-  return `<ol class="timeline">${vs.map(v=>{
-    const rel = v.github_release, store = v.appstore_notes, isLatest = v===firstLive;
-    const from = [rel?`<a href="${esc(rel.url)}" target="_blank" rel="noopener">GitHub ${esc(rel.tag)}</a>${rel.matched?"":" <span class='pill warn' title='No release matched the tweak version'>closest match</span>"}`:"",
-                  store?`App Store notes for ${esc(store.version)}`:""].filter(Boolean).join(" · ");
-    return `<li class="${v.published?(isLatest?"live":""):"hidden"}" data-vid="${v.id}">
-      <div class="v-title">${esc(v.version)} <span class="v-meta">(${esc(v.buildVersion)})</span>
-        ${v.tweakVersion?`<span class="pill dim">${esc(a.name)} ${esc(v.tweakVersion)}</span>`:""}
-        ${v.published?(isLatest?'<span class="pill ok">Latest</span>':""):'<span class="pill dim">Hidden</span>'}</div>
-      <div class="v-meta">${fmtDate(v.date)} · ${fmtSize(v.size)} · iOS ${esc(v.minOSVersion||"?")}+ · ${v.origin?.startsWith("actions")?"Built on GitHub":"Uploaded"}${from?" · "+from:""}</div>
-      <div class="notes" data-notes>${esc(v.localizedDescription)}</div>
-      <div class="row">
-        <button class="btn small" data-vact="edit">Edit notes</button>
-        <button class="btn small" data-vact="refresh">Re-pull changelogs</button>
-        <button class="btn small" data-vact="toggle">${v.published?"Hide from source":"Publish"}</button>
-        <a class="btn small" href="/ipa/${esc(v.file)}">Download</a>
-        <button class="btn small danger" data-vact="delete">Delete</button>
-      </div></li>`}).join("")}</ol>`;
+  const cur = v => view===v || (v==="home" && view.startsWith("app:"));
+  const item = (v, label, icon) => `<button class="side-item" aria-current="${view===v}" data-view="${esc(v)}">${icon}<span>${label}</span></button>`;
+  $("#nav").innerHTML = item("home","Overview",ICONS.home)
+    + `<div class="side-label">Apps</div>`
+    + apps.map(a=>{ const busy = buildsOf(a.bundleIdentifier).some(ACTIVE), v = versionsOf(a.bundleIdentifier)[0];
+        return `<button class="side-item" aria-current="${view==="app:"+a.bundleIdentifier}" data-view="app:${esc(a.bundleIdentifier)}">
+          ${iconImg(iconFor(a),a.name,"icon s")}<span>${esc(a.name)}</span><span class="meta">${busy?"Building":v?esc(v.version):""}</span></button>` }).join("")
+    + `<div class="side-label">Manage</div>` + item("new","Add app",ICONS.add) + item("source","Source",ICONS.source);
+  $("#tabbar").innerHTML = [["home","Overview",ICONS.home],["new","Add app",ICONS.add],["source","Source",ICONS.source]]
+    .map(([v,l,i])=>`<button aria-current="${cur(v)}" data-view="${v}">${i}<span>${l}</span></button>`).join("");
+  $$("#nav [data-view], #tabbar [data-view]").forEach(b=>b.onclick=()=>setView(b.dataset.view));
 }
 
 /* ---------------- overview ---------------- */
-const openRuns = new Set();   // cards whose Run build panel is open, kept across re-renders
+const openRuns = new Set();   // apps whose run form is open, kept across re-renders
 function homeView(apps){
-  const offline = !S.public_reachable;
-  return `<div class="row" style="justify-content:space-between;align-items:flex-end">
-      <div><h1>Overview</h1><p class="sub">Start a build for any app. Open an app to edit its listing, workflow and versions.</p></div>
-      <button class="btn" data-act="checkUpdates">Check for updates</button></div>
-    <p class="v-meta" style="margin-top:6px">${lastChecked()}</p>
-    ${apps.length ? `<div class="cards">${apps.map(a=>appCard(a, offline)).join("")}</div>`
-      : `<p class="empty" style="margin-top:20px">No apps yet. Use Add app in the sidebar.</p>`}`;
+  const today = new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
+  const updates = apps.filter(a=>updateReasons(a).length);
+  return `<div class="page-top">
+      <div><p class="eyebrow">${esc(today)}</p><h1 class="large-title">Overview</h1></div>
+      <button class="text-btn" data-act="checkUpdates">Check for updates</button></div>
+    ${updates.length ? `<section class="shelf">${shelfHead("Updates", `<span class="note">${plural(updates.length,"app")}</span>`)}
+      <ul class="lockups">${updates.map(a=>lockup(a,"update")).join("")}</ul></section>` : ""}
+    <section class="shelf">${shelfHead("Your apps", `<span class="note">${lastChecked()}</span>`)}
+      ${apps.length ? `<ul class="lockups">${apps.map(a=>lockup(a,"app")).join("")}</ul>`
+        : `<p class="empty">No apps yet. Add one from Add app.</p>`}</section>
+    <section class="shelf">${shelfHead("Source")}
+      <div class="lockup-row" style="grid-template-columns:minmax(0,1fr) auto">
+        <div><div class="lockup-sub">Add this link in AltStore or another store app.</div>
+          <div class="mono" style="overflow-wrap:anywhere;margin-top:2px">${esc(S.public_url)}/source.json</div></div>
+        <button class="pill" data-copy="${esc(S.public_url)}/source.json">Copy</button></div></section>`;
 }
-function storeUpdate(a){
-  const st = a.appstore || {}, v = versionsOf(a.bundleIdentifier)[0];
-  if(!st.version) return "";
-  if(!v) return `<span class="pill dim">${esc(a.base_app_name||st.trackName||"App Store")} ${esc(st.version)}</span>`;
-  return cmpVersion(v, {version: st.version, date: v.date}) > 0
-    ? `<span class="pill warn" title="The App Store has a newer version than your latest build">${esc(a.base_app_name||"App Store")} ${esc(st.version)} is out</span>` : "";
-}
-/* original repo releases and fork sync state (from /api/updates/check) */
 function lastChecked(){
   const ts = Object.values(S.apps).map(a=>a.upstream?.checked).filter(Boolean).sort().pop();
-  return ts ? `Original repos last checked ${fmtDate(ts)}. Checked automatically every few hours.` : "Original repos haven't been checked yet.";
+  return ts ? `Checked ${fmtDate(ts)}` : "Not checked yet";
 }
-function releaseBadge(a){
-  const r = a.upstream?.release;
-  if(!r) return "";
-  const label = `${esc(a.name)} ${esc(r.version||r.tag)}`;
-  return r.newer
-    ? `<a class="pill warn" href="${esc(r.url)}" target="_blank" rel="noopener" title="Newer than the ${esc(a.name)} version you've published${r.published_tweak?" ("+esc(r.published_tweak)+")":""}">${label} released</a>`
-    : `<a class="pill dim" href="${esc(r.url)}" target="_blank" rel="noopener" title="Newest release of ${esc(a.github_repo)}">${label}</a>`;
-}
-function forkLine(a, withButton=true){
-  const u = a.upstream || {}, f = u.fork;
-  const errs = (u.errors||[]).map(e=>`<span class="runerr" style="display:block">${esc(e)}</span>`).join("");
-  if(!f) return errs;
-  if(!f.parent) return `<span class="v-meta">${esc(f.note||"")}</span>${errs}`;
-  if(f.behind==null) return `<span class="v-meta">Couldn't compare with ${esc(f.parent)}.</span>${errs}`;
-  const where = `${esc(f.ref)} vs ${esc(f.parent)}:${esc(f.parent_branch)}`;
-  if(!f.behind) return `<span class="v-meta">Fork up to date (${where})${f.ahead?` · ${f.ahead} commit${f.ahead>1?"s":""} of your own`:""}</span>${errs}`;
-  return `<span class="pill warn">Fork ${f.behind} commit${f.behind>1?"s":""} behind</span>
-    <span class="v-meta">${where}${f.compare_url?` · <a href="${esc(f.compare_url)}" target="_blank" rel="noopener">see changes</a>`:""}</span>
-    ${withButton&&S.github_ready?`<button class="btn small" data-sync="${esc(a.bundleIdentifier)}">Sync fork</button>`:""}${errs}`;
+/* why an app shows under Updates: a new release, a newer App Store base, or a fork behind */
+function updateReasons(a){
+  const out = [], r = a.upstream?.release, f = a.upstream?.fork, st = a.appstore || {}, v = versionsOf(a.bundleIdentifier)[0];
+  if(r?.newer) out.push(`<span class="update-why"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(a.name)} ${esc(r.version||r.tag)}</a> is out</span>`);
+  if(st.version && v && cmpVersion(v, {version: st.version, date: v.date}) > 0)
+    out.push(`<span class="update-why">${esc(a.base_app_name||"Base app")} ${esc(st.version)} is on the App Store</span>`);
+  if(f?.parent && f.behind) out.push(`<span class="update-why">Fork is ${plural(f.behind,"commit")} behind ${esc(f.parent)}${f.compare_url?` · <a href="${esc(f.compare_url)}" target="_blank" rel="noopener">Changes</a>`:""}</span>`);
+  return out;
 }
 function cardStatus(a){
-  const b = buildsOf(a.bundleIdentifier)[0], v = versionsOf(a.bundleIdentifier)[0];
-  const log = b?.run_url ? ` · <a href="${esc(b.run_url)}" target="_blank" rel="noopener">log</a>` : "";
-  if(b && ACTIVE(b)) return `<span class="pill warn">Building</span> ${esc(STEPS[Math.min(stepIndex(b),3)])}${log}`;
-  if(b?.status==="failed") return `<span class="pill bad">Last build failed</span> ${esc(b.error||"")}${log}`;
-  if(v) return `Latest ${esc(v.version)}${v.tweakVersion?` · ${esc(a.name)} ${esc(v.tweakVersion)}`:""} · ${fmtDate(v.date)}`;
-  return "Nothing published yet.";
+  const b = buildsOf(a.bundleIdentifier)[0];
+  const log = b?.run_url ? ` · <a href="${esc(b.run_url)}" target="_blank" rel="noopener">Log</a>` : "";
+  if(b && ACTIVE(b)) return `<span class="status busy">${esc(STEPS[Math.min(stepIndex(b),3)])}${log}</span>`;
+  if(b?.status==="failed") return `<span class="status bad">Build failed${log}</span>`;
+  if(b?.status==="done") return `<span class="status ok">Published ${fmtDay(b.updated||b.started)}${log}</span>`;
+  return "";
 }
-function appCard(a, offline){
+const CHEVRON = '<svg class="chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function lockup(a, kind){
   const b = a.build || {}, id = a.bundleIdentifier, running = buildsOf(id).some(ACTIVE);
-  const ready = b.fork_repo && b.workflow;
+  const ready = b.fork_repo && b.workflow, v = versionsOf(id)[0];
+  const key = kind+":"+id, open = ready && openRuns.has(key);
+  const sub = v ? [v.tweakVersion ? `${esc(a.name)} ${esc(v.tweakVersion)}` : "", `${esc(a.base_app_name||"Version")} ${esc(v.version)}`].filter(Boolean).join(" · ") : "Nothing published yet";
+  const f = a.upstream?.fork;
+  const lines = kind==="update" ? updateReasons(a) : [cardStatus(a)].filter(Boolean);
   const hasUrl = /data-upfor/.test(inputsMarkup(a));
-  return `<article class="card" data-card="${esc(id)}">
-    <div class="card-head">${iconImg(iconFor(a),a.name,"mini")}
-      <div style="min-width:0"><h2>${esc(a.name)}</h2><div class="row" style="gap:6px">${releaseBadge(a)}${storeUpdate(a)}</div></div>
-      <button class="btn small" data-view="app:${esc(id)}">Edit</button></div>
-    <div class="card-status" data-status="${esc(id)}">${cardStatus(a)}</div>
-    ${ready && a.upstream ? `<div class="row" style="gap:8px;font-size:14px">${forkLine(a)}</div>` : ""}
-    ${!ready ? `<p class="hint" style="margin:0">No GitHub workflow set up. <a href="#" data-view="app:${esc(id)}">Add your fork</a> to build from here.</p>`
-    : `<details ${openRuns.has(id)?"open":""} data-runs="${esc(id)}"><summary>Run build <span class="v-meta" style="font-weight:400">${esc(b.fork_repo)} · ${esc(b.ref||"main")}</span></summary>
-      <div class="runform" data-runform="${esc(id)}">
+  const buttons = [
+    kind==="update" && f?.behind && S.github_ready ? `<button class="pill" data-sync="${esc(id)}">Sync fork</button>` : "",
+    ready ? `<button class="pill" data-toggle-run="${esc(key)}" aria-expanded="${open}" ${running?"disabled":""}>${running?"Building":`${kind==="update"?"Update":"Build"}${CHEVRON}`}</button>`
+          : kind==="app" ? `<button class="pill" data-view="app:${esc(id)}">Set up</button>` : "",
+  ].join("");
+  return `<li class="lockup" data-card="${esc(id)}">
+    <div class="lockup-row">${iconImg(iconFor(a),a.name,"icon m")}
+      <div style="min-width:0"><button class="lockup-name" data-view="app:${esc(id)}">${esc(a.name)}</button>
+        <div class="lockup-sub num">${sub}</div>
+        ${lines.length?`<div class="lockup-lines" ${kind==="app"?`data-status="${esc(id)}"`:""}>${lines.join("")}</div>`:kind==="app"?`<div class="lockup-lines" data-status="${esc(id)}"></div>`:""}</div>
+      <div class="lockup-actions">${buttons}</div></div>
+    ${open ? `<div class="runform" data-runform="${esc(id)}">
+        <p class="meta">${esc(b.fork_repo)} · ${esc(b.ref||"main")} · ${esc(b.workflow)}</p>
         ${inputsMarkup(a)}
-        ${hasUrl && offline ? `<p class="warnbox" style="margin-top:12px">Uploads give GitHub a link on ${esc(S.public_url)}, which GitHub can't reach. Set PUBLIC_URL to your public address first, or paste a link from elsewhere.</p>` : ""}
-        <div class="row" style="margin-top:12px">
-          <button class="btn primary" data-run="${esc(id)}" ${!S.github_ready||running?"disabled":""}>${running?"Building…":"Run build"}</button>
-        </div>
-      </div></details>`}
-  </article>`;
+        ${hasUrl && !S.public_reachable ? `<p class="callout">Uploads give GitHub a link on ${esc(S.public_url)}, which it can't reach. Set PUBLIC_URL to your public address, or paste a link from elsewhere.</p>` : ""}
+        <div class="form-actions"><button class="pill filled large" data-run="${esc(id)}" ${!S.github_ready||running?"disabled":""}>Start build</button></div>
+      </div>` : ""}
+  </li>`;
 }
 function wireHome(){
-  $$("[data-card] [data-view]").forEach(el=>el.onclick=e=>{ e.preventDefault(); setView(el.dataset.view) });
-  $$("details[data-runs]").forEach(d=>d.ontoggle=()=>{ d.open ? openRuns.add(d.dataset.runs) : openRuns.delete(d.dataset.runs) });
+  $$("[data-toggle-run]").forEach(btn=>btn.onclick=()=>{
+    const key = btn.dataset.toggleRun;
+    openRuns.has(key) ? openRuns.delete(key) : openRuns.add(key);
+    render();
+  });
   $$("[data-run]").forEach(btn=>btn.onclick=async()=>{
-    const id = btn.dataset.run, root = $(`[data-runform="${CSS.escape(id)}"]`);
+    const id = btn.dataset.run, root = btn.closest("[data-runform]");
     btn.disabled = true;
     try{
       const {build, inputs} = actionsBody(id, root);
       await api(`/api/apps/${id}`, {method:"PUT", body: JSON.stringify({build})});
       await api(`/api/apps/${id}/build`, {method:"POST", body: JSON.stringify({inputs})});
-      toast(`${S.apps[id].name}: build started on GitHub`);
-      openRuns.delete(id);
+      toast(`${S.apps[id].name}: build started`);
+      openRuns.delete("app:"+id); openRuns.delete("update:"+id);
     }catch(e){ toast(e.message,true); btn.disabled = false; return }
     load();
   });
@@ -546,47 +463,276 @@ function wireHome(){
 function refreshHome(){
   Object.values(S.apps).forEach(a=>{
     const el = $(`[data-status="${CSS.escape(a.bundleIdentifier)}"]`); if(el) el.innerHTML = cardStatus(a);
-    const btn = $(`[data-run="${CSS.escape(a.bundleIdentifier)}"]`), running = buildsOf(a.bundleIdentifier).some(ACTIVE);
-    if(btn){ btn.disabled = !S.github_ready || running; btn.textContent = running ? "Building…" : "Run build" }
+    const running = buildsOf(a.bundleIdentifier).some(ACTIVE);
+    $$(`[data-run="${CSS.escape(a.bundleIdentifier)}"]`).forEach(btn=>{ btn.disabled = !S.github_ready || running });
   });
+  renderNav(sortedApps());
 }
-/* Upload .ipa buttons next to link fields */
-function wireUploads(){
-  $$("[data-upfor]").forEach(inp=>inp.onchange=async()=>{
-    const f = inp.files[0]; if(!f) return;
-    const wrap = inp.closest(".urlfield"), target = $(`[data-in="${CSS.escape(inp.dataset.upfor)}"]`, wrap), bar = $(".progress", wrap);
-    const btn = inp.closest(".upbtn"); btn.classList.add("disabled");
-    try{
-      const u = await uploadWithProgress("/api/uploads", f, bar);
-      target.value = u.url;
-      toast(`Uploaded ${u.bundleIdentifier||f.name} ${u.version||""}. The link is filled in.`);
-      if(!S.public_reachable) toast(`GitHub can't reach ${S.public_url}. This link only works once the server is public.`, true);
-    }catch(e){ toast(e.message,true) }
-    btn.classList.remove("disabled"); bar.style.display="none"; inp.value="";
-  });
+
+/* ---------------- app page ---------------- */
+function appView(a){
+  const st = a.appstore || {}, id = a.bundleIdentifier, latest = versionsOf(id)[0], b = buildsOf(id)[0];
+  const tab = appTab[id] || "build";
+  const cat = S.categories[chosenCategory(a)] || S.categories[a.category_auto] || "Other";
+  const fact = (k,v,s="") => `<div class="fact"><div class="k">${k}</div><div class="v num">${v}</div><div class="s">${s}</div></div>`;
+  return `
+  <button class="back" data-view="home">Overview</button>
+  <header class="product">
+    ${iconImg(iconFor(a),a.name,"icon l")}
+    <div style="min-width:0">
+      <h1>${esc(a.name)}</h1>
+      ${a.subtitle?`<p class="subtitle">${esc(a.subtitle)}</p>`:""}
+      ${a.github_repo?`<a class="dev" href="https://github.com/${esc(a.github_repo)}" target="_blank" rel="noopener">${esc(a.developerName||a.github_repo)}</a>`:a.developerName?`<span class="dev muted">${esc(a.developerName)}</span>`:""}
+      <div class="actions">
+        <button class="pill filled large" data-seg="build" data-focus-run>Run build</button>
+        <button class="pill large" data-act="appstore">Refresh App Store info</button>
+      </div>
+    </div>
+  </header>
+  <div class="facts">
+    ${fact("Version", latest?esc(latest.version):"—", latest?.tweakVersion?`${esc(a.name)} ${esc(latest.tweakVersion)}`:"")}
+    ${fact("Size", latest?fmtSize(latest.size):"—")}
+    ${fact("Category", esc(cat))}
+    ${fact("Requires", latest?.minOSVersion?`iOS ${esc(latest.minOSVersion)}`:"—", latest?.minOSVersion?"or later":"")}
+    ${fact("App Store", st.version?esc(st.version):"—", esc(a.base_app_name||st.trackName||""))}
+    ${fact("Last build", b?(b.status==="done"?"Published":b.status==="failed"?"Failed":"Running"):"—", b?fmtDay(b.started):"")}
+  </div>
+  <div class="segmented" role="tablist">
+    ${[["build","Build"],["listing","Listing"],["versions","Versions"]].map(([k,l])=>`<button role="tab" data-seg="${k}" aria-selected="${tab===k}">${l}</button>`).join("")}
+  </div>
+
+  <section class="shelf" data-panel="build" ${tab==="build"?"":"hidden"}>
+    ${shelfHead("Build on GitHub", `<span class="note">Results publish to the source</span>`)}
+    <div class="two-col" style="margin-top:18px">
+      <div class="group" id="actions">${actionsForm(a)}</div>
+      <div class="group" id="runs">${runsPanel(a)}</div>
+    </div>
+  </section>
+
+  <section class="shelf" data-panel="listing" ${tab==="listing"?"":"hidden"}>
+    ${shelfHead("Listing", `<span class="note">What people see in their store app</span>`)}
+    <div class="two-col" style="margin-top:18px">
+      <div class="group" id="listing">${listingForm(a)}</div>
+      <div class="preview"><p class="label">Preview</p><div id="preview"></div></div>
+    </div>
+  </section>
+
+  <section class="shelf" data-panel="versions" ${tab==="versions"?"":"hidden"}>
+    ${shelfHead("Version history", `<span class="note">${plural(versionsOf(id).length,"version")}</span>`)}
+    <label class="drop" id="drop" tabindex="0"><input type="file" accept=".ipa" id="ipaFile" hidden>
+      <strong>Upload an .ipa</strong><span>Drop it here or choose a file. Built on your Mac, for example.</span>
+      <div class="progress" id="prog"><i></i></div></label>
+    <div id="versions">${versionsList(a)}</div>
+  </section>`;
+}
+
+/* ---------------- GitHub Actions form ---------------- */
+/* the inputs, shared by the app page and the overview's run forms */
+function inputsMarkup(a){
+  const b = a.build || {inputs:{}};
+  if(schemaFor(b)) return schemaInputs(b);
+  const inputs = Object.entries(b.inputs||{});
+  const isBool = v => v==="true" || v==="false";
+  if(!inputs.length) return `<p class="empty" style="padding:4px 0">${b.fork_repo&&b.workflow ? (wfErrors[a.bundleIdentifier] ? `<span class="err">${esc(wfErrors[a.bundleIdentifier])}</span>` : "Reading the workflow's inputs…") : "Fill in your fork and workflow file, then save. Its inputs appear here."}</p>`;
+  return `<div class="grid">${inputs.map(([k,v])=> isBool(v)
+    ? `<label class="field">${esc(k)}<select data-in="${esc(k)}"><option ${v==="true"?"selected":""}>true</option><option ${v==="false"?"selected":""}>false</option></select></label>`
+    : /url/i.test(k) ? urlField(k, esc(k), v, "Paste a link or upload the decrypted .ipa")
+    : `<label class="field">${esc(k)}<input data-in="${esc(k)}" value="${esc(v)}" spellcheck="false" autocapitalize="off" placeholder="Blank uses the workflow default"></label>`).join("")}</div>`;
+}
+/* a link field with an Upload button: the server stores the file and fills in a private link */
+function urlField(name, labelHtml, value, placeholder){
+  return `<div class="field wide urlfield"><label class="field">${labelHtml}
+      <input data-in="${esc(name)}" value="${esc(value)}" spellcheck="false" autocapitalize="off" autocorrect="off" inputmode="url" placeholder="${esc(placeholder)}"></label>
+    <label class="pill upbtn">Upload .ipa<input type="file" accept=".ipa" hidden data-upfor="${esc(name)}"></label>
+    <div class="progress"><i></i></div></div>`;
+}
+function actionsForm(a){
+  const b = a.build || {inputs:{}};
+  const running = buildsOf(a.bundleIdentifier).some(ACTIVE);
+  return `
+    <h3 class="group-title">Workflow</h3>
+    <div class="grid three">
+      ${field("build.fork_repo","Your fork",b.fork_repo,"you/"+(a.github_repo||"repo").split("/").pop())}
+      ${field("build.workflow","Workflow file",b.workflow,"build.yml")}
+      ${field("build.ref","Branch",b.ref||"main")}
+    </div>
+    ${b.fork_repo && a.upstream ? `<div style="margin-top:12px;font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">${forkLine(a)}</div>` : ""}
+    <div class="group-sub"><h4>Inputs</h4>
+      ${b.fork_repo&&b.workflow&&S.github_ready?`<button class="text-btn small" data-act="loadWorkflow">Reload from workflow</button>`:""}</div>
+    ${inputsMarkup(a)}
+    <div class="form-actions">
+      <button class="pill filled large" data-act="build" ${!S.github_ready||running?"disabled":""}>${running?"Building…":"Start build"}</button>
+      <button class="pill large" data-act="saveActions">Save without building</button>
+    </div>
+    ${!S.github_ready?`<p class="callout bad">Builds are off. Set GITHUB_TOKEN on the container, then restart it.</p>`
+      : schemaFor(b) ? "" : `<p class="hint">Blank link fields use the workflow's own default, if it has one.</p>`}`;
+}
+/* inputs read from the workflow file itself (POST /api/apps/:id/workflow) */
+const wfErrors = {}, wfTried = new Set();
+const schemaFor = b => { const s = b.schema;
+  return s && s.fork_repo===b.fork_repo && s.workflow===b.workflow && s.ref===(b.ref||"main") ? s : null };
+function schemaInputs(b){
+  const s = schemaFor(b);
+  if(!s.inputs.length) return `<p class="empty" style="padding:4px 0">This workflow takes no inputs.</p>`;
+  const val = i => (b.inputs||{})[i.name] ?? i.default;
+  const label = i => `${esc(i.description||i.name)}${i.required?" (required)":""}<small>${esc(i.name)}</small>`;
+  return `<div class="grid">${s.inputs.map(i=>{
+    const v = val(i);
+    if(i.type==="boolean") return `<label class="check wide"><input type="checkbox" data-in="${esc(i.name)}" ${v==="true"?"checked":""}> ${esc(i.description||i.name)}</label>`;
+    if(i.type==="choice") return `<label class="field">${label(i)}<select data-in="${esc(i.name)}">${i.options.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
+    if(/url|link/i.test(i.name) || /\b(url|link)\b/i.test(i.description||""))
+      return urlField(i.name, label(i), v, i.default ? "Default: "+i.default : "Paste a link or upload the .ipa");
+    const wide = (i.description||"").length > 40;
+    return `<label class="field ${wide?"wide":""}">${label(i)}<input data-in="${esc(i.name)}" value="${esc(v)}" spellcheck="false" autocapitalize="off"
+      ${i.type==="number"?'inputmode="decimal"':""} placeholder="${i.default?"Default: "+esc(i.default):i.required?"Required":"Optional"}"></label>`;
+  }).join("")}</div>`;
+}
+async function loadWorkflow(appId, quiet=false){
+  try{ await api(`/api/apps/${appId}/workflow`, {method:"POST"}); delete wfErrors[appId]; if(!quiet) toast("Inputs loaded from the workflow") }
+  catch(e){ wfErrors[appId] = e.message; if(!quiet) toast(e.message,true) }
+  return load();
+}
+function forkLine(a, withButton=true){
+  const u = a.upstream || {}, f = u.fork;
+  const errs = (u.errors||[]).map(e=>`<span class="err" style="flex-basis:100%">${esc(e)}</span>`).join("");
+  if(!f) return errs;
+  if(!f.parent) return `<span class="muted">${esc(f.note||"")}</span>${errs}`;
+  if(f.behind==null) return `<span class="muted">Couldn't compare with ${esc(f.parent)}.</span>${errs}`;
+  const where = `${esc(f.ref)} vs ${esc(f.parent)}:${esc(f.parent_branch)}`;
+  if(!f.behind) return `<span class="status ok">Fork up to date</span><span class="muted">${where}${f.ahead?` · ${plural(f.ahead,"commit")} of your own`:""}</span>${errs}`;
+  return `<span class="status busy">Fork ${plural(f.behind,"commit")} behind</span>
+    <span class="muted">${where}${f.compare_url?` · <a href="${esc(f.compare_url)}" target="_blank" rel="noopener">Changes</a>`:""}</span>
+    ${withButton&&S.github_ready?`<button class="pill" data-sync="${esc(a.bundleIdentifier)}">Sync fork</button>`:""}${errs}`;
+}
+
+const STEPS = ["Start the workflow on GitHub","Build on GitHub","Download the .ipa","Publish to the source"];
+function stepIndex(b){
+  if(b.status==="done") return 4;
+  if(b.status==="importing") return 2;
+  if(b.status==="failed") return !b.run_id ? 0 : b.conclusion==="success" ? 2 : 1;
+  return b.run_id ? 1 : 0;
+}
+function runsPanel(a){
+  const builds = buildsOf(a.bundleIdentifier);
+  if(!builds.length) return `<h3 class="group-title">Last build</h3><p class="empty" style="padding:4px 0">No builds yet.</p>`;
+  const cur = builds[0], idx = stepIndex(cur), failed = cur.status==="failed";
+  const steps = STEPS.map((s,i)=>{
+    const state = i<idx ? "done" : i===idx ? (failed?"fail":(cur.status==="done"?"done":"now")) : "";
+    return `<li class="${state}"><span class="mark"></span><span>${esc(s)}</span></li>`}).join("");
+  const result = cur.status==="done" ? `Published ${cur.imported.map(i=>esc(i.version)+(i.duplicate?" (already published)":"")).join(" and ")}.` : "";
+  const older = builds.slice(1,6);
+  return `<h3 class="group-title" style="margin-bottom:2px">${ACTIVE(cur)?"Building now":"Last build"}</h3>
+    <p class="muted" style="font-size:13px;margin:0 0 8px">Started ${fmtDate(cur.started)}</p>
+    <ol class="steps">${steps}</ol>
+    ${failed?`<p class="err" style="margin:10px 0 0">${esc(cur.error||"The build failed.")}</p>`:""}
+    ${result?`<p style="color:var(--green);font-size:14px;margin:10px 0 0">${result}</p>`:""}
+    <div class="form-actions" style="margin-top:14px">
+      ${cur.run_url?`<a class="pill" href="${esc(cur.run_url)}" target="_blank" rel="noopener">Open log on GitHub</a>`:""}
+      ${failed?`<button class="pill" data-retry="${cur.id}">Check again</button>`:""}
+    </div>
+    ${older.length?`<div class="group-sub"><h4>Earlier builds</h4></div><ul class="history">${older.map(b=>{
+      const st = b.status==="done"?'<span class="status ok">Published</span>':b.status==="failed"?'<span class="status bad">Failed</span>':'<span class="status busy">Running</span>';
+      return `<li><span class="num">${fmtDate(b.started)}</span><span>${st}${b.run_url?` · <a href="${esc(b.run_url)}" target="_blank" rel="noopener">Log</a>`:""}</span></li>`}).join("")}</ul>`:""}`;
+}
+
+/* ---------------- listing editor + preview ---------------- */
+function listingForm(a){
+  return `<h3 class="group-title">Store listing</h3>
+    <div class="grid">
+      ${field("name","Name",a.name)}${field("developerName","Developer",a.developerName)}
+      ${field("subtitle","Subtitle",a.subtitle,"","wide")}
+      ${field("tintColor","Tint color",a.tintColor,"#3A6EA5")}${categoryField(a)}
+      ${field("iconURL","Icon URL",a.iconURL,"Blank uses the App Store icon","wide")}
+      <label class="field wide">Description<textarea data-f="localizedDescription" style="min-height:150px" placeholder="Blank writes one from the subtitle and repo">${esc(a.localizedDescription)}</textarea></label>
+      <label class="field wide">Screenshot links, one per line<textarea data-f="screenshots" autocapitalize="off">${esc((a.screenshots||[]).join("\n"))}</textarea></label>
+      <label class="check wide"><input type="checkbox" data-f="use_appstore_screenshots" ${a.use_appstore_screenshots?"checked":""}> Use the App Store screenshots when the list above is empty</label>
+    </div>
+    <div class="group-sub"><h4>Changelogs</h4></div>
+    <div class="grid">
+      ${field("github_repo","Original repo",a.github_repo,"owner/name")}
+      ${field("base_app_name","Base app name",a.base_app_name,"YouTube")}
+      ${field("appstore_bundle_id","App Store bundle ID",a.appstore_bundle_id)}
+      ${field("tweak_version_regex","Tweak version pattern",a.tweak_version_regex)}
+    </div>
+    <p class="hint">The tweak version is read from the .ipa file name with this pattern, then matched to a release of the original repo.</p>
+    <div class="form-actions">
+      <button class="pill filled large" data-act="saveListing">Save listing</button>
+      <label class="pill large">Upload icon<input type="file" accept="image/*" id="iconFile" hidden></label>
+      ${versionsOf(a.bundleIdentifier).length?"":`<button class="pill large danger" data-act="deleteApp">Remove app</button>`}
+    </div>`;
+}
+/* AltStore only knows a fixed set of categories, so pick from them; blank follows the App Store */
+/* the category id you picked ("Social" and "social" both count), or "" for automatic */
+function chosenCategory(a){
+  const names = S.categories, cur = (a.category||"").toLowerCase();
+  return names[cur] ? cur : Object.keys(names).find(k=>names[k].toLowerCase()===cur) || "";
+}
+function categoryField(a){
+  const names = S.categories, chosen = chosenCategory(a);
+  return `<label class="field">Category<select data-f="category">
+    <option value="" ${chosen?"":"selected"}>Automatic (${esc(names[a.category_auto]||"Other")}, from the App Store)</option>
+    ${Object.entries(names).map(([id,name])=>`<option value="${id}" ${id===chosen?"selected":""}>${esc(name)}</option>`).join("")}
+  </select></label>`;
+}
+
+function renderPreview(a){
+  const f = collect($("#listing"));
+  const latest = versionsOf(a.bundleIdentifier).find(v=>v.published);
+  const shots = (f.screenshots && f.screenshots.length) ? f.screenshots : (f.use_appstore_screenshots ? (a.appstore?.screenshotUrls||[]) : []);
+  $("#preview").innerHTML = `<div class="pv">
+    <div class="pv-head">${iconImg(f.iconURL || a.appstore?.artworkUrl512 || "", f.name, "icon m")}
+      <div style="min-width:0"><div class="pv-name">${esc(f.name||"Untitled")}</div><div class="pv-sub">${esc(f.subtitle)}</div><div class="pv-dev">${esc(f.developerName)}</div></div></div>
+    ${shots.length?`<div class="pv-shots">${shots.slice(0,8).map(u=>`<img alt="" src="${esc(u)}">`).join("")}</div>`:""}
+    ${f.localizedDescription?`<p class="pv-desc" style="margin-top:16px">${esc(f.localizedDescription)}</p>`:""}
+    <div class="pv-new"><h3>What's new</h3>${latest
+      ? `<div class="meta num"><span>Version ${esc(latest.version)}</span><span>${fmtDay(latest.date)}</span></div><p>${esc(latest.localizedDescription)}</p>`
+      : `<div class="meta">Nothing published yet</div>`}</div></div>`;
+}
+
+/* ---------------- versions ---------------- */
+function versionsList(a){
+  const vs = versionsOf(a.bundleIdentifier);
+  if(!vs.length) return `<p class="empty">Nothing published yet. Run a build or upload an .ipa.</p>`;
+  const firstLive = vs.find(v=>v.published);
+  return `<ol class="versions">${vs.map(v=>{
+    const rel = v.github_release, store = v.appstore_notes, isLatest = v===firstLive;
+    const from = [rel?`<a href="${esc(rel.url)}" target="_blank" rel="noopener">GitHub ${esc(rel.tag)}</a>${rel.matched?"":" (closest release)"}`:"",
+                  store?`App Store notes for ${esc(store.version)}`:""].filter(Boolean).join(" · ");
+    return `<li class="${v.published?"":"hidden"}" data-vid="${v.id}">
+      <div class="v-head"><div class="v-name num">${esc(v.version)}${v.published?(isLatest?'<span class="tag ok">Latest</span>':""):'<span class="tag">Hidden</span>'}</div>
+        <div class="v-date num">${fmtDay(v.date)}</div></div>
+      <div class="v-meta num">${v.tweakVersion?`${esc(a.name)} ${esc(v.tweakVersion)} · `:""}${fmtSize(v.size)} · iOS ${esc(v.minOSVersion||"?")} or later · ${v.origin?.startsWith("actions")?"Built on GitHub":"Uploaded"}${from?" · "+from:""}</div>
+      <div class="notes" data-notes>${esc(v.localizedDescription)}</div>
+      <div class="v-actions">
+        <button class="pill" data-vact="edit">Edit notes</button>
+        <button class="pill" data-vact="refresh">Re-pull changelogs</button>
+        <button class="pill" data-vact="toggle">${v.published?"Hide":"Publish"}</button>
+        <a class="pill" href="/ipa/${esc(v.file)}">Download</a>
+        <button class="pill danger" data-vact="delete">Delete</button>
+      </div></li>`}).join("")}</ol>`;
 }
 
 /* ---------------- add app ---------------- */
 function newAppView(){
-  return `<h1>Add app</h1><p class="sub">Any tweaked .ipa works, not just YTKACE and Sparkle.</p>
-  <div class="panel" style="margin-top:20px">
-    <h3>Upload its .ipa</h3>
-    <p class="hint" style="margin:0 0 12px">The quickest way. The app is created from the file's bundle ID, name and version.</p>
-    <label class="drop" id="drop" tabindex="0" style="margin-bottom:0"><input type="file" accept=".ipa" id="ipaFile" hidden>
-      <strong>Drop an .ipa here</strong><span>or click to choose a file.</span>
+  return `<div class="page-top"><div><p class="eyebrow">Manage</p><h1 class="large-title">Add app</h1></div></div>
+  <section class="shelf">${shelfHead("Upload its .ipa", `<span class="note">Fastest</span>`)}
+    <p class="hint">The app is created from the file's bundle ID, name and version. Any tweaked .ipa works.</p>
+    <label class="drop" id="drop" tabindex="0"><input type="file" accept=".ipa" id="ipaFile" hidden>
+      <strong>Drop an .ipa here</strong><span>or choose a file</span>
       <div class="progress" id="prog"><i></i></div></label>
-  </div>
-  <div class="panel" id="newApp" style="margin-top:16px">
-    <h3>Or set it up first</h3>
-    <p class="hint" style="margin:0 0 12px">For an app you'll build on GitHub Actions. You'll add your fork and workflow on the next page.</p>
-    <div class="grid2">
-      ${field("bundleIdentifier","Bundle ID of the base app","","com.example.app")}
-      ${field("name","Name","","Tweak name")}
-      ${field("github_repo","Original GitHub repo (for changelogs)","","owner/repo")}
-      ${field("base_app_name","Base app name","","YouTube")}
+  </section>
+  <section class="shelf">${shelfHead("Or set it up first")}
+    <p class="hint">For an app you'll build on GitHub. You add your fork and workflow on its page.</p>
+    <div class="group" id="newApp" style="margin-top:16px">
+      <div class="grid">
+        ${field("bundleIdentifier","Bundle ID of the base app","","com.example.app")}
+        ${field("name","Name","","Tweak name")}
+        ${field("github_repo","Original repo, for changelogs","","owner/repo")}
+        ${field("base_app_name","Base app name","","YouTube")}
+      </div>
+      <div class="form-actions"><button class="pill filled large" data-act="createApp">Add app</button></div>
     </div>
-    <div class="row" style="margin-top:16px"><button class="btn primary" data-act="createApp">Add app</button></div>
-  </div>`;
+  </section>`;
 }
 function wireDrop(onDone){
   const zone = $("#drop"), input = $("#ipaFile");
@@ -606,15 +752,22 @@ function wireDrop(onDone){
 
 /* ---------------- source settings ---------------- */
 function sourceView(){
-  const s = S.source;
-  return `<h1>Source settings</h1><p class="sub">How the source itself appears when someone adds it.</p>
-  <div class="panel" id="sourceForm" style="margin-top:20px"><div class="grid2">
-    ${field("name","Name",s.name)}${field("identifier","Identifier (don't change after sharing)",s.identifier)}
-    ${field("subtitle","Subtitle",s.subtitle)}${field("tintColor","Tint color",s.tintColor)}
-    ${field("iconURL","Icon URL",s.iconURL)}${field("website","Website",s.website)}
-  </div>
-  <label class="field" style="margin-top:12px">Description<textarea data-f="description">${esc(s.description)}</textarea></label>
-  <div class="row" style="margin-top:16px"><button class="btn primary" data-act="saveSource">Save source</button></div></div>`;
+  const s = S.source, url = S.public_url + "/source.json";
+  return `<div class="page-top"><div><p class="eyebrow">Manage</p><h1 class="large-title">Source</h1></div></div>
+  <section class="shelf">${shelfHead("Link")}
+    <div class="lockup-row" style="grid-template-columns:minmax(0,1fr) auto">
+      <div class="mono" style="overflow-wrap:anywhere">${esc(url)}</div>
+      <div class="lockup-actions"><button class="pill" data-copy="${esc(url)}">Copy</button><a class="pill" href="/source.json" target="_blank" rel="noopener">Open</a></div></div>
+  </section>
+  <section class="shelf">${shelfHead("How it appears", `<span class="note">Keep the identifier once people have added it</span>`)}
+    <div class="group" id="sourceForm" style="margin-top:16px"><div class="grid">
+      ${field("name","Name",s.name)}${field("identifier","Identifier",s.identifier)}
+      ${field("subtitle","Subtitle",s.subtitle)}${field("tintColor","Tint color",s.tintColor)}
+      ${field("iconURL","Icon URL",s.iconURL)}${field("website","Website",s.website)}
+      <label class="field wide">Description<textarea data-f="description">${esc(s.description)}</textarea></label>
+    </div>
+    <div class="form-actions"><button class="pill filled large" data-act="saveSource">Save source</button></div></div>
+  </section>`;
 }
 
 /* ---------------- interactions ---------------- */
@@ -646,13 +799,36 @@ function uploadWithProgress(url, file, bar=$("#prog")){
     xhr.send(fd);
   });
 }
+/* Upload .ipa buttons next to link fields */
+function wireUploads(){
+  $$("[data-upfor]").forEach(inp=>inp.onchange=async()=>{
+    const f = inp.files[0]; if(!f) return;
+    const wrap = inp.closest(".urlfield"), target = $(`[data-in="${CSS.escape(inp.dataset.upfor)}"]`, wrap), bar = $(".progress", wrap);
+    const btn = inp.closest(".upbtn"); btn.classList.add("disabled");
+    try{
+      const u = await uploadWithProgress("/api/uploads", f, bar);
+      target.value = u.url;
+      toast(`Uploaded ${u.bundleIdentifier||f.name} ${u.version||""}. The link is filled in.`);
+      if(!S.public_reachable) toast(`GitHub can't reach ${S.public_url}. This link only works once the server is public.`, true);
+    }catch(e){ toast(e.message,true) }
+    btn.classList.remove("disabled"); bar.style.display="none"; inp.value="";
+  });
+}
 
 function wire(){
-  $$("[data-copy]").forEach(b=>b.onclick=async()=>{ await navigator.clipboard.writeText(b.dataset.copy); toast("Copied") });
+  $$("[data-copy]").forEach(b=>b.onclick=async()=>{ await navigator.clipboard.writeText(b.dataset.copy); toast("Source link copied") });
+  $$("#main [data-view]").forEach(el=>el.onclick=e=>{ e.preventDefault(); setView(el.dataset.view) });
   const appId = view.startsWith("app:") ? view.slice(4) : null;
 
   if(appId){
     const a = S.apps[appId];
+    // switch between Build, Listing and Versions without re-rendering, so typed values stay
+    $$("[data-seg]").forEach(btn=>btn.onclick=()=>{
+      const tab = appTab[appId] = btn.dataset.seg;
+      $$(".segmented [data-seg]").forEach(s=>s.setAttribute("aria-selected", String(s.dataset.seg===tab)));
+      $$("[data-panel]").forEach(p=>p.hidden = p.dataset.panel!==tab);
+      if(btn.hasAttribute("data-focus-run")) $("#actions").scrollIntoView({behavior:"smooth", block:"start"});
+    });
     renderPreview(a);
     $("#listing").addEventListener("input", ()=>renderPreview(a));
     wireDrop(v => { if(!v.duplicate && v.bundleIdentifier!==appId){ load().then(()=>setView("app:"+v.bundleIdentifier)); return true } });
@@ -667,7 +843,7 @@ function wire(){
   wireUploads();
   $$("[data-sync]").forEach(btn=>btn.onclick=async()=>{
     const a = S.apps[btn.dataset.sync], f = a.upstream.fork;
-    if(!confirm(`Pull ${f.behind} commit${f.behind>1?"s":""} from ${f.parent} into ${a.build.fork_repo} (${f.ref})?\n\nThis changes your fork on GitHub, like its Sync fork button.`)) return;
+    if(!confirm(`Pull ${plural(f.behind,"commit")} from ${f.parent} into ${a.build.fork_repo} (${f.ref})?\n\nThis changes your fork on GitHub, like its Sync fork button.`)) return;
     btn.disabled = true;
     try{ const r = await api(`/api/apps/${a.bundleIdentifier}/sync`, {method:"POST"}); toast(r.steps.join(" ")) }
     catch(e){ toast(e.message,true) }
@@ -708,7 +884,6 @@ function wire(){
 
 /* parts that refresh while a build runs, without touching the forms */
 function wireLive(){
-  const appId = view.slice(4);
   $$("#runs [data-retry]").forEach(b=>b.onclick=async()=>{ try{ await api(`/api/builds/${b.dataset.retry}/retry`,{method:"POST"}); toast("Checking the run again") }catch(e){ toast(e.message,true) } refreshLive() });
   $$("#versions [data-vact]").forEach(btn=>btn.onclick=async()=>{
     const li = btn.closest("li"), vid = li.dataset.vid, v = S.versions.find(x=>x.id===vid), act = btn.dataset.vact;
@@ -740,14 +915,14 @@ async function refreshLive(){
   if(!view.startsWith("app:")) return render();
   const a = S.apps[view.slice(4)];
   if(!a) return render();
-  renderNav(Object.values(S.apps).sort((x,y)=>(x.order||0)-(y.order||0)));
+  renderNav(sortedApps());
   $("#runs").innerHTML = runsPanel(a);
   const editing = $("#versions textarea");
   if(!editing) $("#versions").innerHTML = versionsList(a);
-  // re-enable the Run button once the build is over, keeping typed inputs
+  // re-enable the Start button once the build is over, keeping typed inputs
   const wasRunning = prev.builds.some(b=>b.bundleIdentifier===a.bundleIdentifier && ACTIVE(b));
   const running = buildsOf(a.bundleIdentifier).some(ACTIVE);
-  const runBtn = $('[data-act="build"]'); if(runBtn) runBtn.disabled = !S.github_ready || running;
+  const runBtn = $('[data-act="build"]'); if(runBtn){ runBtn.disabled = !S.github_ready || running; runBtn.textContent = running ? "Building…" : "Start build" }
   if(wasRunning && !running){
     const b = buildsOf(a.bundleIdentifier)[0];
     b.status==="done" ? toast("Build published to the source") : toast("The build failed. See the run for details.", true);

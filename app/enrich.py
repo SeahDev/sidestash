@@ -75,6 +75,7 @@ async def appstore_lookup(bundle_id: str, country: str = "us") -> dict:
         "description": x.get("description", ""),
         "trackViewUrl": x.get("trackViewUrl", ""),
         "minimumOsVersion": x.get("minimumOsVersion", ""),
+        "primaryGenreName": x.get("primaryGenreName", ""),
     }
 
 
