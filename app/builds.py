@@ -60,7 +60,7 @@ async def start_build(bundle_id: str, inputs: dict) -> dict:
     cfg = app.get("build") or {}
     fork, wf, ref = cfg.get("fork_repo"), cfg.get("workflow"), cfg.get("ref") or "main"
     if not fork or not wf:
-        raise BuildError("Set the fork repo and workflow file for this app first.")
+        raise BuildError("Set the build repo and workflow file for this app first.")
 
     schema = cfg.get("schema") or {}
     if schema and (schema.get("fork_repo"), schema.get("workflow"), schema.get("ref")) == (fork, wf, ref):

@@ -476,7 +476,7 @@ function lockup(a, kind){
       <div class="lockup-actions">${buttons}</div></div>
     ${open ? `<div class="runform" data-runform="${esc(id)}">
         <p class="meta">${esc(b.fork_repo)} · ${esc(b.ref||"main")} · ${esc(b.workflow)}</p>
-        ${inputsMarkup(a)}
+        ${inputsMarkup(a, kind)}
         ${hasUrl && !S.public_reachable ? `<p class="callout">Uploads give GitHub a link on ${esc(S.public_url)}, which it can't reach. Set PUBLIC_URL to your public address, or paste a link from elsewhere.</p>` : ""}
         <div class="form-actions"><button class="pill filled large" data-run="${esc(id)}" ${!S.github_ready||running?"disabled":""}>Start build</button></div>
       </div>` : ""}
@@ -573,9 +573,9 @@ function appView(a){
 
 /* ---------------- GitHub Actions form ---------------- */
 /* the inputs, shared by the app page and the overview's run forms */
-function inputsMarkup(a){
+function inputsMarkup(a, kind){
   const b = a.build || {inputs:{}};
-  if(schemaFor(b)) return schemaInputs(b);
+  if(schemaFor(b)) return schemaInputs(b, a, kind);
   const inputs = Object.entries(b.inputs||{});
   const isBool = v => v==="true" || v==="false";
   if(!inputs.length) return `<p class="empty" style="padding:4px 0">${b.fork_repo&&b.workflow ? (wfErrors[a.bundleIdentifier] ? `<span class="err">${esc(wfErrors[a.bundleIdentifier])}</span>` : "Reading the workflow's inputs…") : "Fill in your fork and workflow file, then save. Its inputs appear here."}</p>`;
@@ -597,7 +597,7 @@ function actionsForm(a){
   return `
     <h3 class="group-title">Workflow</h3>
     <div class="grid three">
-      ${field("build.fork_repo","Your fork",b.fork_repo,"you/"+(a.github_repo||"repo").split("/").pop())}
+      ${field("build.fork_repo","Build repo",b.fork_repo,"you/builds or you/"+(a.github_repo||"repo").split("/").pop())}
       ${field("build.workflow","Workflow file",b.workflow,"build.yml")}
       ${field("build.ref","Branch",b.ref||"main")}
     </div>
@@ -616,10 +616,13 @@ function actionsForm(a){
 const wfErrors = {}, wfTried = new Set();
 const schemaFor = b => { const s = b.schema;
   return s && s.fork_repo===b.fork_repo && s.workflow===b.workflow && s.ref===(b.ref||"main") ? s : null };
-function schemaInputs(b){
+// A workflow input named "ref" picks the upstream version to build. Updating
+// fills in the new release's tag; elsewhere it keeps what you used last.
+const releaseTag = a => { const r = a?.upstream?.release; return r?.newer ? r.tag : "" };
+function schemaInputs(b, a, kind){
   const s = schemaFor(b);
   if(!s.inputs.length) return `<p class="empty" style="padding:4px 0">This workflow takes no inputs.</p>`;
-  const val = i => (b.inputs||{})[i.name] ?? i.default;
+  const val = i => (i.name==="ref" && kind==="update" && releaseTag(a)) || ((b.inputs||{})[i.name] ?? i.default);
   const label = i => `${esc(i.description||i.name)}${i.required?" (required)":""}<small>${esc(i.name)}</small>`;
   return `<div class="grid">${s.inputs.map(i=>{
     const v = val(i);
@@ -641,7 +644,7 @@ function forkLine(a, withButton=true){
   const u = a.upstream || {}, f = u.fork;
   const errs = (u.errors||[]).map(e=>`<span class="err" style="flex-basis:100%">${esc(e)}</span>`).join("");
   if(!f) return errs;
-  if(!f.parent) return `<span class="muted">${esc(f.note||"")}</span>${errs}`;
+  if(!f.parent) return errs;   // a build repo of your own: nothing to sync
   if(f.behind==null) return `<span class="muted">Couldn't compare with ${esc(f.parent)}.</span>${errs}`;
   const where = `${esc(f.ref)} vs ${esc(f.parent)}:${esc(f.parent_branch)}`;
   if(!f.behind) return `<span class="status ok">Fork up to date</span><span class="muted">${where}${f.ahead?` · ${plural(f.ahead,"commit")} of your own`:""}</span>${errs}`;

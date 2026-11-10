@@ -92,11 +92,16 @@ Upload IPAs over the LAN: Cloudflare's free plan rejects request bodies over
 
 ## 4. Add an app and its build
 
-1. Fork the tweak's repo on GitHub and enable Actions in your fork (GitHub turns
-   them off in new forks).
+1. Get a repo whose workflow builds the IPA. Either:
+   - **One repo of your own build workflows** (recommended): each workflow
+     clones the tweak's original repo at the version you ask for, so there are
+     no forks to keep in sync. Give the workflow an input named `ref`, and
+     Sidestash fills in the new release's tag when you start an update.
+   - **A fork of the tweak's repo**, using its own workflow. Enable Actions in
+     the fork (GitHub turns them off in new forks).
 2. In the dashboard, open **Add app**. Either drop an .ipa you already have, or
    enter the base app's bundle ID, a name and the original repo.
-3. On the app's page, under **Build**, fill in **Your fork**, the **Workflow file**
+3. On the app's page, under **Build**, fill in the **Build repo**, the **Workflow file**
    (the one in `.github/workflows` that builds the IPA) and the **Branch**. Sidestash
    reads the workflow's inputs and shows them as fields.
 4. Fill in the inputs. Many workflows want a link to a decrypted .ipa: press
@@ -118,8 +123,8 @@ Pinning an image (e.g. `ubuntu-24.04`) fixes that.
 **Keeping up with the original repos.** Every few hours Sidestash checks each
 app's original repo for a new release and compares your fork's build branch with
 it. The Overview's **Updates** list shows when a release is newer than the
-version you've published, when the App Store has a newer base app, and when your
-fork is behind, with a **Sync fork** button. Sync does what GitHub's Sync fork
+version you've published, when the App Store has a newer base app, and, if you
+build from a fork, when your fork is behind, with a **Sync fork** button. Sync does what GitHub's Sync fork
 button does; if your build branch only exists in your fork (say `sidestash`,
 holding your own edits), it syncs the default branch and then merges that into
 your build branch. A conflict is left for you to resolve on GitHub.
