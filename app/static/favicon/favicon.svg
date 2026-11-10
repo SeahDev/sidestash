@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Sidestash icon: the dashboard's Overview grid, white on the accent blue. -->
+  <rect width="512" height="512" rx="115" fill="#0071e3"/>
+  <!-- Same shapes as the Overview tab icon (24-unit grid), scaled 16.5x and centered. -->
+  <g transform="translate(58 58) scale(16.5)" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round">
+    <rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/>
+    <rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/>
+    <rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/>
+    <rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>
+  </g>
+</svg>

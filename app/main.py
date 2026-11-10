@@ -146,6 +146,26 @@ def icon(filename: str):
     return FileResponse(path)
 
 
+FAVICONS = {  # path -> (file, type); built by scripts/build-icon.py
+    "favicon.ico": ("favicon.ico", "image/x-icon"),
+    "favicon.svg": ("favicon.svg", "image/svg+xml"),
+    "apple-touch-icon.png": ("apple-touch-icon.png", "image/png"),
+    "apple-touch-icon-precomposed.png": ("apple-touch-icon.png", "image/png"),  # older iOS asks for this
+}
+
+
+def _favicon_route(file: str, media: str):
+    def serve():
+        return FileResponse(STATIC / "favicon" / file, media_type=media, headers={"Cache-Control": "public, max-age=86400"})
+    return serve
+
+
+# Favicons live at the site root, where browsers and iOS look for them. Each path is
+# registered on its own (not as /{name}), so they can't shadow /admin or other routes.
+for _path, (_file, _media) in FAVICONS.items():
+    app.add_api_route(f"/{_path}", _favicon_route(_file, _media), methods=["GET"], include_in_schema=False)
+
+
 FONT_DIR = STATIC / "fonts"
 
 

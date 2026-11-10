@@ -6,6 +6,9 @@
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <title>Sidestash</title>
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preload" href="/fonts/sf-pro-text-regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/sf-pro-text-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/sf-pro-display-bold.woff2" as="font" type="font/woff2" crossorigin>
@@ -912,7 +915,9 @@ async function refreshLive(){
       b.status==="done" ? toast(`${n}: published to the source`) : toast(`${n}: the build failed`, true) });
     refreshHome(); return schedulePoll();
   }
-  if(!view.startsWith("app:")) return render();
+  // Add app and Source are forms: never re-draw them, or what you've typed is lost.
+  // Only the sidebar shows build state there.
+  if(!view.startsWith("app:")){ renderNav(sortedApps()); return schedulePoll() }
   const a = S.apps[view.slice(4)];
   if(!a) return render();
   renderNav(sortedApps());

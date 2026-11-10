@@ -26,7 +26,7 @@ It also watches the original repos for new releases and can sync your forks. The
   <ExtraParams/>
   <PostArgs/>
   <CPUset/>
-  <Requires>Expose only the public paths (/, /source.json, /apps.json, /ipa/, /icons/, /fonts/, and /base/ if you upload IPAs for builds); keep /admin on your LAN or Tailscale. The app runs as PUID:PGID (99:100 by default) and fixes the Data folder's ownership on start.</Requires>
+  <Requires>Expose only the public paths (/, /source.json, /apps.json, /ipa/, /icons/, /fonts/, the favicons, and /base/ if you upload IPAs for builds); keep /admin on your LAN or Tailscale. The app runs as PUID:PGID (99:100 by default) and fixes the Data folder's ownership on start.</Requires>
   <Config Name="WebUI Port" Target="8686" Default="8686" Mode="tcp" Description="Port for the source and the dashboard." Type="Port" Display="always" Required="true" Mask="false">8686</Config>
   <Config Name="Data" Target="/data" Default="/mnt/user/appdata/sidestash" Mode="rw" Description="Where IPAs, icons, uploads and settings are saved. Keep this mapped so they survive restarts and updates." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/sidestash</Config>
   <Config Name="Public URL" Target="PUBLIC_URL" Default="" Mode="" Description="The address phones reach the source at, e.g. https://apps.example.com. Download links are built from it. Leave empty to use whatever address each request came in on." Type="Variable" Display="always" Required="false" Mask="false"></Config>

@@ -72,7 +72,8 @@ change the image name and the URLs in it to your own.
 
 The dashboard has a password, but there's no reason to put it on the internet.
 Forward only these paths publicly: `/`, `/source.json`, `/apps.json`, `/ipa/`,
-`/icons/`, `/fonts/`, and `/base/` if you upload decrypted IPAs for builds (GitHub
+`/icons/`, `/fonts/`, the favicons (`/favicon.ico`, `/favicon.svg`,
+`/apple-touch-icon.png`), and `/base/` if you upload decrypted IPAs for builds (GitHub
 downloads them from there). Use the LAN address (`http://<unraid-ip>:8686/admin`) or
 Tailscale for the dashboard.
 
@@ -81,7 +82,7 @@ Cloudflare Tunnel example (`config.yml`):
 ```yaml
 ingress:
   - hostname: apps.example.com
-    path: ^/(source\.json|apps\.json|ipa/.*|icons/.*|fonts/.*|base/.*)?$
+    path: ^/(source\.json|apps\.json|favicon\.(ico|svg)|apple-touch-icon(-precomposed)?\.png|ipa/.*|icons/.*|fonts/.*|base/.*)?$
     service: http://192.168.1.10:8686
   - service: http_status:404
 ```
