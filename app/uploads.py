@@ -68,8 +68,21 @@ def remove(uid: str) -> bool:
         return False
     (UPLOAD_DIR / u["stored"]).unlink(missing_ok=True)
     _list().remove(u)
+    forget_dead_links()
     store.save()
     return True
+
+
+def forget_dead_links() -> None:
+    """Blank saved build inputs that point to an upload that no longer exists,
+    so the form doesn't offer a link that would 404."""
+    live = {u["token"] for u in _list()}
+    for app in store.data["apps"].values():
+        saved = (app.get("build") or {}).get("inputs") or {}
+        for k, v in saved.items():
+            m = LINK.search(str(v))
+            if m and m.group(1) not in live:
+                saved[k] = ""
 
 
 def remove_linked(values) -> None:
@@ -97,6 +110,8 @@ def prune() -> None:
     cutoff = time.time() - MAX_AGE
     for u in [u for u in _list() if u.get("added_ts", 0) < cutoff]:
         remove(u["id"])
+    forget_dead_links()   # also catches links whose upload was deleted by an older version
+    store.save()
 
 
 def link(base: str, u: dict) -> str:
