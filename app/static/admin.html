@@ -362,6 +362,9 @@ function iconImg(url, name, cls){
 }
 const field = (k,label,val,ph="",cls="") => `<label class="field ${cls}">${esc(label)}<input data-f="${k}" value="${esc(val)}" placeholder="${esc(ph)}" autocapitalize="off" autocorrect="off"></label>`;
 const shelfHead = (title, right="") => `<div class="shelf-head"><h2>${title}</h2>${right}</div>`;
+/* The address to add in a store app. The site root serves the source to store apps
+   (see landing() in main.py), so the short form works; /source.json does too. */
+const sourceLink = () => S.public_url.replace(/\/+$/, "") + "/";
 const sortedApps = () => Object.values(S.apps).sort((a,b)=>(a.order||0)-(b.order||0));
 
 /* ---------------- layout ---------------- */
@@ -404,8 +407,8 @@ function homeView(apps){
     <section class="shelf">${shelfHead("Source")}
       <div class="lockup-row" style="grid-template-columns:minmax(0,1fr) auto">
         <div><div class="lockup-sub">Add this link in AltStore or another store app.</div>
-          <div class="mono" style="overflow-wrap:anywhere;margin-top:2px">${esc(S.public_url)}/source.json</div></div>
-        <button class="pill" data-copy="${esc(S.public_url)}/source.json">Copy</button></div></section>`;
+          <div class="mono" style="overflow-wrap:anywhere;margin-top:2px">${esc(sourceLink())}</div></div>
+        <button class="pill" data-copy="${esc(sourceLink())}">Copy</button></div></section>`;
 }
 function lastChecked(){
   const ts = Object.values(S.apps).map(a=>a.upstream?.checked).filter(Boolean).sort().pop();
@@ -771,12 +774,12 @@ function wireDrop(onDone){
 
 /* ---------------- source settings ---------------- */
 function sourceView(){
-  const s = S.source, url = S.public_url + "/source.json";
+  const s = S.source, url = sourceLink();
   return `<div class="page-top"><div><p class="eyebrow">Manage</p><h1 class="large-title">Source</h1></div></div>
   <section class="shelf">${shelfHead("Link")}
     <div class="lockup-row" style="grid-template-columns:minmax(0,1fr) auto">
       <div class="mono" style="overflow-wrap:anywhere">${esc(url)}</div>
-      <div class="lockup-actions"><button class="pill" data-copy="${esc(url)}">Copy</button><a class="pill" href="/source.json" target="_blank" rel="noopener">Open</a></div></div>
+      <div class="lockup-actions"><button class="pill" data-copy="${esc(url)}">Copy</button><a class="pill" href="/source.json" target="_blank" rel="noopener">View JSON</a></div></div>
   </section>
   <section class="shelf">${shelfHead("How it appears", `<span class="note">Keep the identifier once people have added it</span>`)}
     <div class="group" id="sourceForm" style="margin-top:16px"><div class="grid">

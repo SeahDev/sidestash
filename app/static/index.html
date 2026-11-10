@@ -79,7 +79,8 @@ async function copyText(text) {
   return ok;
 }
 fetch("/source.json").then(r=>r.json()).then(src=>{
-  const url = src.sourceURL;
+  // The site root serves the source to store apps, so share the short address.
+  const url = src.sourceURL.replace(/source\.json$/, "");
   document.title = src.name;
   document.getElementById("name").textContent = src.name;
   document.getElementById("sub").textContent = src.subtitle || "";
