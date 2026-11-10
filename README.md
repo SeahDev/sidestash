@@ -27,7 +27,8 @@ Your Mac stays the fallback (see below).
 2. In this folder, run `./run-local.sh`. The first time, it creates `.env` and stops.
 3. Edit `.env`: set `ADMIN_PASSWORD`, and set `PUBLIC_URL` to your Mac's LAN
    address (e.g. `http://192.168.1.50:8686`) so your iPhone can reach it.
-4. Run `./run-local.sh` again and open http://localhost:8686/admin.
+4. Run `./run-local.sh` again and open http://localhost:8686/admin. Sign in with
+   `ADMIN_USER` and `ADMIN_PASSWORD`; your password manager can save them.
    If macOS asks whether Python may accept incoming connections, allow it.
 
 Stop it with Ctrl-C. Everything it stores goes in `./data`.
@@ -63,7 +64,7 @@ change the image name and the URLs in it to your own.
 | `ADMIN_USER` / `ADMIN_PASSWORD` | Dashboard sign-in. |
 | `ADMIN_TOKEN` | Optional. Long random string for `scripts/upload.sh`. |
 | `PORT` | Port the server listens on inside the container (default `8686`). Only matters with host or custom networking. |
-| `GITHUB_TOKEN` | Fine-grained token limited to **Only select repositories** (your forks): **Actions: read and write** and **Contents: read**. Only if you use Sync fork, raise **Contents** to read and write and add **Workflows: read and write**. Give it nothing else. Also lifts the API rate limit for changelogs. |
+| `GITHUB_TOKEN` | Fine-grained token limited to **Only select repositories** (your build repo, or your forks): **Actions: read and write** and **Contents: read**. To update pinned build tools from the dashboard, raise **Contents** to read and write; to use Sync fork on a fork, also add **Workflows: read and write**. Give it nothing else. Also lifts the API rate limit for changelogs. |
 | `UPLOAD_LINK_HOURS` / `UPLOAD_LINK_DOWNLOADS` | Lifetime of the private links for decrypted IPAs you upload for builds (default 3 hours, 5 downloads). |
 | `PUID` / `PGID` | Docker only: the user the server runs as (default `99`/`100`, Unraid's nobody:users). It never runs as root. |
 | `UPDATE_CHECK_HOURS` | How often to check the original repos for releases and your forks for new commits (default `6`; `0` turns it off). |
@@ -89,6 +90,14 @@ ingress:
 
 Upload IPAs over the LAN: Cloudflare's free plan rejects request bodies over
 100 MB, and many app IPAs are bigger than that. Downloads aren't affected.
+
+**Let Cloudflare cache the IPAs.** Each IPA and image is stored under a name
+unique to its content, and Sidestash tells caches to keep them for good. Cloudflare
+doesn't cache `.ipa` files unless asked, so add a Cache Rule (Caching → Cache
+Rules → Create rule): *URI Path starts with `/ipa/`* or *starts with `/icons/`*,
+then **Eligible for cache**. Installs are then served from Cloudflare instead of
+your upload bandwidth (the free plan caches files up to 512 MB). Leave `/base/`
+out: those links are private and marked never to be cached.
 
 ## 4. Add an app and its build
 
@@ -133,6 +142,15 @@ your build branch. A conflict is left for you to resolve on GitHub.
 For routine updates you don't need the app page: every app on the Overview has
 a **Build** button that opens the same inputs, Upload buttons included.
 
+**Pinned build tools.** A build repo can keep a `pins.json` that fixes each
+outside tool its workflows download (Theos, SDKs, cyan and so on) to an exact
+commit or release. Sidestash checks those against their upstream with each update
+check, lists them under **Build tools** on the Overview, and shows new versions
+under **Updates**. **Update** commits the new pin to the build repo, so give the
+GitHub token **Contents: Read and write** on that repo as well. Pins marked
+`"hold": true` are skipped by **Update all**. See
+[SeahDev/builds](https://github.com/SeahDev/builds) for an example.
+
 ## 5. Building on your Mac instead
 
 Build as the tweak's README describes, then either drag the .ipa onto the
@@ -151,13 +169,21 @@ release.
 
 - **Keep the dashboard private.** Forward only the public paths listed above;
   reach `/admin` over your LAN or Tailscale. The password is the only lock on it.
+- **Signing in** sets a cookie for 30 days that pages can't read and other sites
+  can't send. It's signed with a key kept in `/data/session.key` together with
+  `ADMIN_PASSWORD`: change the password (or delete that file) to sign out every
+  device. Over plain `http://` on your LAN the cookie isn't encrypted; Tailscale
+  is, or put HTTPS in front.
 - **Wrong passwords are throttled:** 10 in 15 minutes locks that address out
   for 15 minutes.
-- **Cross-site requests are refused.** Your browser re-sends the dashboard
-  password to every request for this address, even ones another site starts,
-  so changes are only accepted with the `X-Sidestash` header the dashboard
-  sends. `scripts/upload.sh` uses `ADMIN_TOKEN` instead, which browsers never
-  send on their own.
+- **Cross-site requests are refused.** Changes are only accepted with the
+  `X-Sidestash` header the dashboard sends, which another site can't add.
+  `scripts/upload.sh` uses `ADMIN_TOKEN` instead, which browsers never send on
+  their own.
+- **Outside build tools are pinned.** With a `pins.json` in your build repo,
+  nothing a tool's author changes reaches your IPAs until you update the pin.
+- **Dependencies:** Dependabot opens weekly pull requests for Python packages,
+  the Docker base image and GitHub Actions.
 - **Upload links are short-lived.** Public forks have public Actions logs, and
   workflows often print their inputs, so the private link to a decrypted IPA
   may be seen by others. Each one is deleted when a build that used it
@@ -165,6 +191,14 @@ release.
   it so you can try again. It stops downloading after `UPLOAD_LINK_DOWNLOADS`.
 - **The container doesn't run as root.** It fixes ownership of `/data`, then
   drops to `PUID`:`PGID`.
+
+## Backups
+
+Everything lives in `/data`: `db.json` (settings, versions, news), the IPAs,
+the images and `session.key`. On Unraid, include the Sidestash appdata folder in
+the **Appdata Backup** plugin. **Source → Data → Backup** in the dashboard
+downloads `db.json` and the images as a zip, without the IPAs (GitHub can build
+those again).
 
 ## Things to know
 

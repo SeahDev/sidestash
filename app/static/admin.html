@@ -67,6 +67,8 @@ a:hover{text-decoration:underline}
 .side-item[aria-current="true"]{background:var(--fill);color:var(--accent);font-weight:600}
 .side-item svg{width:20px;height:20px;flex:none;color:var(--accent)}
 .side-item .icon{width:24px;height:24px}
+.side-item.signout{margin-top:14px;color:var(--text-2)}
+.side-item.signout svg{color:var(--text-3)}
 .side-item .meta{margin-left:auto;font-size:12px;color:var(--text-3);font-weight:500}
 .tabbar{display:none}
 main{min-width:0;padding:34px clamp(20px,4vw,52px) 80px;max-width:1080px}
@@ -248,6 +250,15 @@ textarea.notes{width:100%;max-height:none;min-height:160px;resize:vertical;paddi
 .color-field{display:flex;gap:8px;align-items:center}
 .color-field input[type=color]{width:44px;min-width:44px;padding:2px;cursor:pointer}
 
+/* ---------- build tools ---------- */
+.tool-list{list-style:none;margin:0;padding:0}
+.tool-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--sep-soft)}
+.tool-list li:last-child{border-bottom:0}
+.tool-name{font-size:15px;font-weight:600;letter-spacing:-.015em}
+.tool-list .v-meta{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;margin-top:3px}
+.tool-icon{width:var(--icon-m,64px);height:var(--icon-m,64px);border-radius:var(--icon-radius);display:grid;place-items:center;background:var(--fill);color:var(--text-2);flex:none}
+.tool-icon svg{width:46%;height:46%}
+
 /* ---------- toast ---------- */
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);max-width:calc(100vw - 32px);padding:11px 18px;border-radius:14px;
   background:rgba(29,29,31,.92);color:#f5f5f7;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;
@@ -336,6 +347,8 @@ const ACTIVE = b => !["done","failed"].includes(b.status);
 const plural = (n, word) => `${n} ${word}${n===1?"":"s"}`;
 
 const ICONS = {
+  tools: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.2 5.2l-5 5a1.8 1.8 0 0 0 2.5 2.5l5-5a4 4 0 0 0 5.2-5.2l-2.4 2.4-2.3-.5-.5-2.3z"/></svg>',
+  signout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4.5h3a2.5 2.5 0 0 1 2.5 2.5v10a2.5 2.5 0 0 1-2.5 2.5h-3"/><path d="M10 8l-4 4 4 4M6 12h9"/></svg>',
   news: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 9h9M7.5 12.5h9M7.5 16h5"/></svg>',
   home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>',
   add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>',
@@ -366,6 +379,7 @@ async function api(path, opts={}){
   // X-Sidestash marks requests as coming from this dashboard (see _from_other_site in main.py)
   const headers = {"X-Sidestash": "1", ...(opts.body && !(opts.body instanceof FormData) ? {"Content-Type":"application/json"} : {})};
   const r = await fetch(path, {...opts, headers});
+  if(r.status===401){ location.href = "/login"; throw new Error("Signed out") }
   if(!r.ok){ let m = r.statusText; try{ m = (await r.json()).detail || m }catch{} throw new Error(m) }
   return r.json();
 }
@@ -408,31 +422,97 @@ function renderNav(apps){
     + apps.map(a=>{ const busy = buildsOf(a.bundleIdentifier).some(ACTIVE), v = versionsOf(a.bundleIdentifier)[0];
         return `<button class="side-item" aria-current="${view==="app:"+a.bundleIdentifier}" data-view="app:${esc(a.bundleIdentifier)}">
           ${iconImg(iconFor(a),a.name,"icon s")}<span>${esc(a.name)}</span><span class="meta">${busy?"Building":v?esc(v.version):""}</span></button>` }).join("")
-    + `<div class="side-label">Manage</div>` + item("new","Add app",ICONS.add) + item("news","News",ICONS.news) + item("source","Source",ICONS.source);
+    + `<div class="side-label">Manage</div>` + item("new","Add app",ICONS.add) + item("news","News",ICONS.news) + item("source","Source",ICONS.source)
+    + `<button class="side-item signout" data-signout>${ICONS.signout}<span>Sign out</span></button>`;
   $("#tabbar").innerHTML = [["home","Overview",ICONS.home],["new","Add app",ICONS.add],["news","News",ICONS.news],["source","Source",ICONS.source]]
     .map(([v,l,i])=>`<button aria-current="${cur(v)}" data-view="${v}">${i}<span>${l}</span></button>`).join("");
   $$("#nav [data-view], #tabbar [data-view]").forEach(b=>b.onclick=()=>setView(b.dataset.view));
+}
+
+// Sign out buttons live in the sidebar and on the Source page.
+document.addEventListener("click", e => { if(e.target.closest("[data-signout]")) signOut() });
+async function signOut(){
+  try{ await fetch("/logout", {method:"POST", headers:{"X-Sidestash":"1"}}) }catch{}
+  location.href = "/login";
 }
 
 /* ---------------- overview ---------------- */
 const openRuns = new Set();   // apps whose run form is open, kept across re-renders
 function homeView(apps){
   const today = new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"});
-  const updates = apps.filter(a=>updateReasons(a).length);
+  const updates = apps.filter(a=>updateReasons(a).length), tools = toolsBehind();
   return `<div class="page-top">
       <div><p class="eyebrow">${esc(today)}</p><h1 class="large-title">Overview</h1></div>
       <button class="text-btn" data-act="checkUpdates">Check for updates</button></div>
-    ${updates.length ? `<section class="shelf">${shelfHead("Updates", `<span class="note">${plural(updates.length,"app")}</span>`)}
-      <ul class="lockups">${updates.map(a=>lockup(a,"update")).join("")}</ul></section>` : ""}
+    ${updates.length || tools.length ? `<section class="shelf">${shelfHead("Updates", `<span class="note">${[updates.length?plural(updates.length,"app"):"", tools.length?plural(tools.length,"build tool"):""].filter(Boolean).join(", ")}</span>`)}
+      <ul class="lockups">${updates.map(a=>lockup(a,"update")).join("")}${tools.length?toolsNotice(tools):""}</ul></section>` : ""}
     <section class="shelf">${shelfHead("Your apps", `<span class="note">${lastChecked()}</span>`)}
       ${apps.length ? `<ul class="lockups">${apps.map(a=>lockup(a,"app")).join("")}</ul>`
         : `<p class="empty">No apps yet. Add one from Add app.</p>`}</section>
+    ${toolsShelf()}
     <section class="shelf">${shelfHead("Source")}
       <div class="lockup-row" style="grid-template-columns:minmax(0,1fr) auto">
         <div><div class="lockup-sub">Add this link in AltStore or another store app.</div>
           <div class="mono" style="overflow-wrap:anywhere;margin-top:2px">${esc(sourceLink())}</div></div>
         <button class="pill" data-copy="${esc(sourceLink())}">Copy</button></div></section>`;
 }
+/* ---------------- build tools (pins.json in a build repo) ---------------- */
+const toolRepos = () => Object.values(S.tools||{});
+// pins with something newer; ones on hold still show in the list but don't count as updates
+const toolsBehind = () => toolRepos().flatMap(t=>Object.values(t.pins||{}).filter(p=>p.latest?.behind && !p.hold && !p.error));
+const pinRef = p => p.release || (p.commit||"").slice(0,7);
+function pinNews(p){
+  const l = p.latest || {};
+  return p.release ? `${esc(l.release)} is out` : `${plural(l.behind,"new commit")}`;
+}
+function toolsNotice(list){
+  const what = list.slice(0,3).map(p=>`${esc(p.name||p.key)}: ${pinNews(p)}`).join(" · ") + (list.length>3?` · ${list.length-3} more`:"");
+  return `<li class="lockup"><div class="lockup-row">
+    <span class="tool-icon">${ICONS.tools}</span>
+    <div style="min-width:0"><div class="lockup-name" style="cursor:default;text-decoration:none">Build tools</div>
+      <div class="lockup-lines"><span class="update-why">${what}</span></div></div>
+    <div class="lockup-actions"><button class="pill" data-scroll="tools">Review</button></div></div></li>`;
+}
+function toolRow(t, p){
+  const l = p.latest || {};
+  const status = p.error ? `<span class="err">${esc(p.error)}</span>`
+    : !l.behind ? `<span class="status ok">Up to date</span>`
+    : `<span class="status busy">${pinNews(p)}</span><span>·</span><a href="${esc(l.url)}" target="_blank" rel="noopener">${p.release?"Release notes":"Changes"}</a>`;
+  return `<li>
+    <div style="min-width:0"><div class="tool-name">${esc(p.name||p.key)}${p.hold?' <span class="tag">On hold</span>':""}</div>
+      ${p.about?`<div class="lockup-sub">${esc(p.about)}</div>`:""}
+      <div class="v-meta num"><a class="mono" href="https://github.com/${esc(p.repo)}" target="_blank" rel="noopener">${esc(p.repo)}</a>
+        <span class="mono">@${esc(pinRef(p))}</span>${p.pinned_date?`<span>· ${fmtDay(p.pinned_date)}</span>`:""}<span>·</span>${status}</div></div>
+    ${l.behind && !p.error ? `<button class="pill" data-tool-update="${esc(t.repo)}" data-key="${esc(p.key)}">Update</button>` : "<span></span>"}</li>`;
+}
+function toolsShelf(){
+  return toolRepos().map(t=>{
+    const pins = Object.values(t.pins||{}), n = pins.filter(p=>p.latest?.behind && !p.hold && !p.error).length;
+    return `<section class="shelf" id="tools">${shelfHead("Build tools", `<span class="note">Pinned in <a href="https://github.com/${esc(t.repo)}/blob/${esc(t.branch)}/pins.json" target="_blank" rel="noopener">${esc(t.repo)}</a> · checked ${fmtDate(t.checked)}</span>`)}
+      <p class="muted" style="font-size:13px;margin:12px 0 0">Outside code your builds download. Each stays at the version listed until you update it here, so look over the changes first.</p>
+      ${(t.errors||[]).map(e=>`<p class="err">${esc(e)}</p>`).join("")}
+      <ul class="tool-list">${pins.map(p=>toolRow(t,p)).join("")}</ul>
+      ${n>1?`<div class="form-actions"><button class="pill" data-tool-update="${esc(t.repo)}">Update all ${n}</button></div>`:""}</section>`;
+  }).join("");
+}
+document.addEventListener("click", async e => {
+  const go = e.target.closest("[data-scroll]");
+  if(go){ document.getElementById(go.dataset.scroll)?.scrollIntoView({behavior:"smooth", block:"start"}); return }
+  const btn = e.target.closest("[data-tool-update]"); if(!btn) return;
+  const repo = btn.dataset.toolUpdate, key = btn.dataset.key, t = S.tools[repo], p = key ? t.pins[key] : null;
+  const msg = p
+    ? (p.hold ? `${p.name} is on hold: ${p.about}\n\nUpdate it anyway?` : `Update ${p.name} to ${p.release ? p.latest.release : p.latest.commit.slice(0,7)}?`)
+      + `\n\nThis commits the new pin to ${repo}, and your next builds use it.`
+    : `Update ${toolsBehind().filter(x=>x.repo && Object.values(t.pins).includes(x)).length} build tools in ${repo}? Pins on hold are left alone.`;
+  if(!confirm(msg)) return;
+  btn.disabled = true;
+  try{
+    const r = await api("/api/tools/update", {method:"POST", body: JSON.stringify({repo, keys: key ? [key] : null})});
+    toast(`Updated ${r.updated.join(", ")}`);
+  }catch(err){ toast(err.message, true) }
+  btn.disabled = false; load();
+});
+
 function lastChecked(){
   const ts = Object.values(S.apps).map(a=>a.upstream?.checked).filter(Boolean).sort().pop();
   return ts ? `Checked ${fmtDate(ts)}` : "Not checked yet";
@@ -912,6 +992,16 @@ function sourceView(){
       <label class="field wide">Description<textarea data-f="description">${esc(s.description)}</textarea></label>
     </div>
     <div class="form-actions"><button class="pill filled large" data-act="saveSource">Save source</button></div></div>
+  </section>
+  <section class="shelf">${shelfHead("Data")}
+    <div class="lockup-row" style="grid-template-columns:minmax(0,1fr) auto">
+      <div><div class="tool-name">Backup</div>
+        <div class="lockup-sub">Settings, versions, news and images in one zip. IPAs aren't included; back up the whole /data folder for those.</div></div>
+      <a class="pill" href="/api/backup" download>Download</a></div>
+    <div class="lockup-row" style="grid-template-columns:minmax(0,1fr) auto;border-top:1px solid var(--sep-soft)">
+      <div><div class="tool-name">Sign out</div>
+        <div class="lockup-sub">Signs this browser out. Changing ADMIN_PASSWORD signs out every device.</div></div>
+      <button class="pill" data-signout>Sign out</button></div>
   </section>`;
 }
 

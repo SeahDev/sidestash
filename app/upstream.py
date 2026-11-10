@@ -13,6 +13,7 @@ from urllib.parse import quote
 
 import httpx
 
+from . import tools
 from .enrich import gh_headers
 from .store import now_iso, store
 
@@ -110,6 +111,10 @@ async def check_all() -> dict:
     async with httpx.AsyncClient(timeout=30, headers=gh_headers()) as c:
         apps = list(store.data["apps"].values())
         await asyncio.gather(*(check_app(c, a) for a in apps))
+        try:
+            await tools.check_all(c)   # pinned build tools in each build repo
+        except Exception:
+            log.exception("build tool check failed")
     store.save()
     return {a["bundleIdentifier"]: a.get("upstream") for a in store.data["apps"].values()}
 

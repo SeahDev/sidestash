@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="noindex">
+<title>Sign in · Sidestash</title>
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<style>
+@font-face{font-family:"SF Pro Text";font-weight:400;font-display:swap;src:url(/fonts/sf-pro-text-regular.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Text";font-weight:500;font-display:swap;src:url(/fonts/sf-pro-text-medium.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Text";font-weight:600;font-display:swap;src:url(/fonts/sf-pro-text-semibold.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Text";font-weight:700;font-display:swap;src:url(/fonts/sf-pro-text-bold.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Display";font-weight:600;font-display:swap;src:url(/fonts/sf-pro-display-semibold.woff2) format("woff2")}
+@font-face{font-family:"SF Pro Display";font-weight:700;font-display:swap;src:url(/fonts/sf-pro-display-bold.woff2) format("woff2")}
+@font-face{font-family:"SF Mono";font-weight:400;font-display:swap;src:url(/fonts/sf-mono-regular.woff2) format("woff2")}
+/* Product-page look: big rounded icons, bold titles, pill buttons, gray secondary text,
+   thin separators, blue only for things you can press. System font, nothing downloaded. */
+:root{
+  --bg:#ffffff; --bg-2:#f5f5f7; --fill:#ececf0; --sep:#d2d2d7; --sep-soft:#e8e8ed;
+  --text:#1d1d1f; --text-2:#6e6e73; --text-3:#86868b;
+  --accent:#0071e3; --accent-pressed:#0062c4; --on-accent:#ffffff; --pill:#f0f0f5;
+  --green:#248a3d; --orange:#b25000; --red:#d70015;
+  --bar:rgba(255,255,255,.82);
+  --font:"SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+  --font-display:"SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+  --mono:"SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  --icon-radius:22.5%; --icon-edge:rgba(0,0,0,.14);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#000000; --bg-2:#161617; --fill:#232326; --sep:#424245; --sep-soft:#2c2c2e;
+    --text:#f5f5f7; --text-2:#a1a1a6; --text-3:#86868b;
+    --accent:#2997ff; --accent-pressed:#0a84ff; --on-accent:#ffffff; --pill:#2c2c2e;
+    --green:#30d158; --orange:#ff9f0a; --red:#ff453a;
+    --bar:rgba(22,22,23,.82); --icon-edge:rgba(255,255,255,.22); color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg-2);color:var(--text);font:15px/1.47 var(--font);letter-spacing:-.01em}
+@media (prefers-color-scheme:dark){body{background:var(--bg)}}
+main{width:100%;max-width:360px;text-align:center}
+.logo{width:72px;height:72px;border-radius:var(--icon-radius);display:block;margin:0 auto 18px;box-shadow:0 0 0 .5px var(--icon-edge)}
+h1{font:700 28px/1.15 var(--font-display);letter-spacing:-.02em;margin:0 0 6px}
+p.sub{color:var(--text-2);margin:0 0 26px}
+form{display:flex;flex-direction:column;gap:12px;text-align:left}
+label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--text-2)}
+input{width:100%;min-height:44px;padding:0 14px;border:1px solid var(--sep);border-radius:12px;background:var(--bg);color:var(--text);font:400 17px var(--font);letter-spacing:-.01em}
+input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+button{margin-top:8px;min-height:44px;border:0;border-radius:980px;background:var(--accent);color:var(--on-accent);font:600 17px var(--font);cursor:pointer}
+button:hover{background:var(--accent-pressed)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.err{color:var(--red);font-size:14px;margin:0 0 4px;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="/apple-touch-icon.png" alt="">
+  <h1>Sidestash</h1>
+  <p class="sub">Sign in to manage your source.</p>
+  <form method="post" action="/login">
+    <p class="err" id="err" role="alert" hidden></p>
+    <label>Username<input name="username" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" required autofocus></label>
+    <label>Password<input name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit">Sign in</button>
+  </form>
+</main>
+<script>
+  const why = new URLSearchParams(location.search).get("error");
+  const msg = {wrong: "That username and password didn't match.", locked: "Too many wrong passwords. Try again in 15 minutes."}[why];
+  if (msg) { const e = document.getElementById("err"); e.textContent = msg; e.hidden = false; history.replaceState(null, "", "/login") }
+</script>
+</body>
+</html>

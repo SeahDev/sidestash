@@ -1,22 +1,28 @@
 import asyncio
 import base64
+import hashlib
+import hmac
+import json
 import logging
 import os
 import re
 import secrets
 import time
+import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from starlette.background import BackgroundTask
 
-from . import builds, news, upstream, uploads, workflow
+from . import builds, news, tools, upstream, uploads, workflow
 from .enrich import compose_notes
 from .ingest import enrich_version, ingest, refresh_appstore, slug
 from .ipa import IPAError, inspect_ipa
 from .source import CATEGORIES, app_category, build_source, category_id
-from .store import ICON_DIR, IPA_DIR, TMP_DIR, new_id, now_iso, store
+from .store import DATA_DIR, ICON_DIR, IPA_DIR, TMP_DIR, new_id, now_iso, store
 
 logging.basicConfig(level=logging.INFO)
 STATIC = Path(__file__).parent / "static"
@@ -79,14 +85,51 @@ def _from_other_site(request: Request) -> bool:
     return request.headers.get("x-sidestash") != "1"
 
 
+# Signing in sets a cookie holding an expiry time and a signature over it. The
+# signing key mixes a random secret kept in /data with the dashboard password,
+# so changing ADMIN_PASSWORD (or deleting session.key) signs every device out.
+SESSION_COOKIE = "sidestash_session"
+SESSION_DAYS = 30
+_KEY_FILE = DATA_DIR / "session.key"
+
+
+def _session_key() -> bytes:
+    if not _KEY_FILE.exists():
+        _KEY_FILE.write_text(secrets.token_hex(32))
+        _KEY_FILE.chmod(0o600)
+    secret = _KEY_FILE.read_text().strip()
+    return hashlib.sha256(f"{secret}\0{ADMIN_USER}\0{ADMIN_PASSWORD}".encode()).digest()
+
+
+def _new_session() -> str:
+    msg = f"v1.{int(time.time()) + SESSION_DAYS * 86400}"
+    return f"{msg}.{hmac.new(_session_key(), msg.encode(), 'sha256').hexdigest()}"
+
+
+def _signed_in(request: Request) -> bool:
+    token = request.cookies.get(SESSION_COOKIE, "")
+    try:
+        version, expires, sig = token.split(".")
+        good = hmac.new(_session_key(), f"{version}.{expires}".encode(), "sha256").hexdigest()
+        return bool(ADMIN_PASSWORD) and version == "v1" and int(expires) > time.time() and _same(sig, good)
+    except ValueError:
+        return False
+
+
 def require_admin(request: Request):
     auth = request.headers.get("authorization", "")
     # The upload token is never sent automatically by a browser, so scripts can skip the CSRF check.
     if auth.startswith("Bearer ") and ADMIN_TOKEN and _same(auth[7:], ADMIN_TOKEN):
         return
+    if _signed_in(request):
+        if _from_other_site(request):
+            raise HTTPException(403, "Changes are only accepted from the Sidestash dashboard.")
+        return
     ip = _client(request)
     if _locked_out(ip):
         raise HTTPException(429, "Too many wrong passwords. Try again in 15 minutes.")
+    # Username and password in the request still work for tools (curl -u), but
+    # the browser is never asked for them: it uses the sign-in page.
     if auth.startswith("Basic ") and ADMIN_PASSWORD:
         try:
             user, _, pw = base64.b64decode(auth[6:]).decode().partition(":")
@@ -99,7 +142,7 @@ def require_admin(request: Request):
             return
         _failures.setdefault(ip, []).append(time.monotonic())
         logging.warning("Wrong dashboard password from %s", ip)
-    raise HTTPException(401, "Sign in required", headers={"WWW-Authenticate": 'Basic realm="sidestash"'})
+    raise HTTPException(401, "Sign in required")
 
 
 admin = Depends(require_admin)
@@ -119,11 +162,27 @@ async def save_upload(upload: UploadFile) -> Path:
 
 # ---------------- public ----------------
 
+# IPAs and images are stored under names that are unique to their content
+# (a hash or a random id), so a name never points at different bytes. Caches,
+# including Cloudflare's, may keep them for good.
+FOREVER = {"Cache-Control": "public, max-age=31536000, immutable"}
+
+
+def source_response(request: Request, extra: dict | None = None) -> Response:
+    """The source JSON with an ETag, so store apps refreshing an unchanged source
+    get a tiny 304 instead of the whole file."""
+    body = json.dumps(build_source(store.snapshot(), base_url(request)), separators=(",", ":")).encode()
+    etag = '"' + hashlib.sha256(body).hexdigest()[:32] + '"'
+    headers = {"Cache-Control": "no-cache", "Access-Control-Allow-Origin": "*", "ETag": etag, **(extra or {})}
+    if etag in [t.strip().removeprefix("W/") for t in request.headers.get("if-none-match", "").split(",")]:
+        return Response(status_code=304, headers=headers)
+    return Response(body, media_type="application/json", headers=headers)
+
+
 @app.get("/source.json")
 @app.get("/apps.json")
 def source(request: Request):
-    return JSONResponse(build_source(store.snapshot(), base_url(request)),
-                        headers={"Cache-Control": "no-cache", "Access-Control-Allow-Origin": "*"})
+    return source_response(request)
 
 
 @app.get("/")
@@ -137,8 +196,7 @@ def landing(request: Request):
     vary = {"Vary": "Accept", "Cache-Control": "no-cache"}   # one URL, two answers: tell caches
     if "text/html" in request.headers.get("accept", ""):
         return FileResponse(STATIC / "index.html", headers=vary)
-    return JSONResponse(build_source(store.snapshot(), base_url(request)),
-                        headers={**vary, "Access-Control-Allow-Origin": "*"})
+    return source_response(request, vary)
 
 
 @app.get("/ipa/{bundle}/{filename}")
@@ -146,7 +204,7 @@ def download_ipa(bundle: str, filename: str):
     path = (IPA_DIR / bundle / filename).resolve()
     if not path.is_relative_to(IPA_DIR.resolve()) or not path.is_file():
         raise HTTPException(404)
-    return FileResponse(path, media_type="application/octet-stream", filename=filename)
+    return FileResponse(path, media_type="application/octet-stream", filename=filename, headers=FOREVER)
 
 
 @app.get("/icons/{filename}")
@@ -154,7 +212,7 @@ def icon(filename: str):
     path = (ICON_DIR / filename).resolve()
     if not path.is_relative_to(ICON_DIR.resolve()) or not path.is_file():
         raise HTTPException(404)
-    return FileResponse(path)
+    return FileResponse(path, headers=FOREVER)
 
 
 FAVICONS = {  # path -> (file, type); built by scripts/build-icon.py
@@ -198,19 +256,59 @@ def uploaded_ipa(token: str, filename: str, request: Request):
     path = uploads.find(token, filename, count=new_download)
     if not path or not path.is_file():
         raise HTTPException(404)
-    return FileResponse(path, media_type="application/octet-stream", filename=filename)
+    # Never cached: a cached copy would outlive the link's download limit and expiry.
+    return FileResponse(path, media_type="application/octet-stream", filename=filename,
+                        headers={"Cache-Control": "private, no-store"})
 
 
 # ---------------- dashboard ----------------
 
-@app.get("/admin", dependencies=[admin])
-def admin_page():
+@app.get("/admin")
+def admin_page(request: Request):
+    if not _signed_in(request):
+        return RedirectResponse("/login", 303)
     return FileResponse(STATIC / "admin.html", headers={"Cache-Control": "no-store"})
 
 
-@app.get("/admin/", dependencies=[admin])
+@app.get("/admin/")
 def admin_slash():
     return RedirectResponse("/admin")
+
+
+@app.get("/login")
+def login_page(request: Request):
+    if _signed_in(request):
+        return RedirectResponse("/admin", 303)
+    return FileResponse(STATIC / "login.html", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/login")
+def login(request: Request, username: str = Form(""), password: str = Form("")):
+    """A plain form post, so password managers offer to fill and save it."""
+    # Only this site's own sign-in page may sign you in (stops another site signing you in).
+    if request.headers.get("sec-fetch-site", "same-origin") not in ("same-origin", "none"):
+        raise HTTPException(403)
+    ip = _client(request)
+    if _locked_out(ip):
+        return RedirectResponse("/login?error=locked", 303)
+    if not (ADMIN_PASSWORD and _same(username, ADMIN_USER) and _same(password, ADMIN_PASSWORD)):
+        _failures.setdefault(ip, []).append(time.monotonic())
+        logging.warning("Wrong dashboard password from %s", ip)
+        return RedirectResponse("/login?error=wrong", 303)
+    _failures.pop(ip, None)
+    r = RedirectResponse("/admin", 303)
+    r.set_cookie(SESSION_COOKIE, _new_session(), max_age=SESSION_DAYS * 86400, path="/",
+                 httponly=True, samesite="strict", secure=request.url.scheme == "https")
+    return r
+
+
+@app.post("/logout")
+def logout(request: Request):
+    if _from_other_site(request):
+        raise HTTPException(403)
+    r = Response(status_code=204)
+    r.delete_cookie(SESSION_COOKIE, path="/")
+    return r
 
 
 @app.get("/api/state", dependencies=[admin])
@@ -441,6 +539,34 @@ def delete_version(vid: str):
 async def check_updates():
     """Check every app's original repo for releases and how far behind each fork is."""
     return await upstream.check_all()
+
+
+@app.get("/api/backup", dependencies=[admin])
+def backup():
+    """Settings, versions, news and images in one zip. Not the IPAs: they're large,
+    and GitHub can build them again. Back up /data as a whole for those."""
+    stamp = time.strftime("%Y-%m-%d")
+    out = TMP_DIR / f"backup-{new_id()}.zip"
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("db.json", json.dumps(store.snapshot(), indent=2))
+        for f in sorted(ICON_DIR.iterdir()):
+            if f.is_file():
+                z.write(f, f"icons/{f.name}")
+    return FileResponse(out, media_type="application/zip", filename=f"sidestash-backup-{stamp}.zip",
+                        headers={"Cache-Control": "no-store"}, background=BackgroundTask(out.unlink, missing_ok=True))
+
+
+@app.post("/api/tools/update", dependencies=[admin])
+async def update_tools(request: Request):
+    """Move pinned build tools to their latest version (one commit to pins.json).
+    Body: {"repo": "you/builds", "keys": ["cyan"]}; leave out keys for every pin not on hold."""
+    body = await request.json()
+    try:
+        return await tools.update(str(body.get("repo", "")), body.get("keys"))
+    except tools.ToolsError as e:
+        raise HTTPException(400, str(e))
+    except httpx.HTTPError:
+        raise HTTPException(502, "Couldn't reach GitHub.")
 
 
 @app.post("/api/apps/{bundle_id}/sync", dependencies=[admin])
