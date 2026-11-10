@@ -16,51 +16,7 @@ DB_PATH = DATA_DIR / "db.json"
 for d in (IPA_DIR, ICON_DIR, TMP_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
-# The two apps you asked about are pre-configured; anything else is created
-# automatically the first time you upload an IPA with a new bundle ID.
-PRESETS = {
-    "com.google.ios.youtube": {
-        "name": "YTKACE",
-        "subtitle": "YouTube with downloads, SponsorBlock and Liquid Glass",
-        "developerName": "itzzace",
-        "tintColor": "#E5322D",
-        "category": "entertainment",
-        "github_repo": "itzzace/ytkace",
-        "appstore_bundle_id": "com.google.ios.youtube",
-        "base_app_name": "YouTube",
-        "tweak_version_regex": r"YTKACE_v?(\d+(?:\.\d+)+)",
-        "build": {
-            "fork_repo": "",
-            "workflow": "build-ipa.yml",
-            "ref": "main",
-            "inputs": {"ipa_url": "", "ipa_url_ios17": ""},
-        },
-    },
-    "com.burbn.instagram": {
-        "name": "Sparkle",
-        "subtitle": "Instagram with downloads, a private gallery and more",
-        "developerName": "efibalogh",
-        "tintColor": "#C13584",
-        "category": "social",
-        "github_repo": "efibalogh/sparkle-ig",
-        "appstore_bundle_id": "com.burbn.instagram",
-        "base_app_name": "Instagram",
-        "tweak_version_regex": r"Sparkle[^/]*?_v(\d+(?:\.\d+)+)_IG",
-        "build": {
-            "fork_repo": "",
-            "workflow": "buildapp.yml",
-            "ref": "main",
-            "inputs": {
-                "decrypted_instagram_url": "",
-                "upload_artifact": "true",
-                "for_sidestore": "false",
-                "with_flex": "false",
-                "bundle_id": "",
-            },
-        },
-    },
-}
-
+# Apps are created when you add one in the dashboard or upload an IPA with a new bundle ID.
 DEFAULT_APP = {
     "name": "",
     "subtitle": "",
@@ -127,8 +83,6 @@ class Store:
             apps = self.data["apps"]
             if bundle_id not in apps:
                 app = copy.deepcopy(DEFAULT_APP)
-                preset = PRESETS.get(bundle_id, {})
-                app.update(copy.deepcopy(preset))
                 app["bundleIdentifier"] = bundle_id
                 app["name"] = app["name"] or ipa_name or bundle_id
                 app["appstore_bundle_id"] = app["appstore_bundle_id"] or bundle_id
@@ -137,9 +91,8 @@ class Store:
                 self.save()
             return apps[bundle_id]
 
-    def seed_presets(self):
-        for bid in PRESETS:
-            self.ensure_app(bid)
+    def migrate(self):
+        """Bring data saved by older versions up to date. Runs at startup."""
         # Older builds copied the App Store description into the app. Clear any
         # that are still verbatim copies so the tweak description is used.
         changed = False

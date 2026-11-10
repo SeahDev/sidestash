@@ -1,7 +1,7 @@
 # Sidestash
 
-A self-hosted AltStore source plus an admin dashboard, built for YTKACE and
-Sparkle but works with any .ipa.
+A self-hosted AltStore source plus an admin dashboard, for tweaked apps you
+build yourself or in your fork of a tweak's repo. Works with any .ipa.
 
 - **Public:** `/source.json` (AltStore v2 format, with the flat legacy fields
   most signer apps also read), `/ipa/...` downloads, and a small landing page at `/`.
@@ -9,17 +9,17 @@ Sparkle but works with any .ipa.
   minimum iOS, entitlements and privacy strings out of the file, pulls the
   matching GitHub release notes, and adds the App Store "What's New" text when
   the IPA is built on the current App Store version.
-- **Per-app control panel:** paste the decrypted .ipa URL, run the app's
-  GitHub Actions workflow, and watch it go from started to published. The
-  server downloads the artifact and adds it to the source. Below that, edit the
-  listing with a live preview, and manage published versions.
+- **Builds:** run an app's GitHub Actions workflow in your fork, with its
+  inputs read from the workflow file, and watch it go from started to published.
+  The server downloads the artifact and adds it to the source. Each app also has
+  a listing editor with a live preview and its version history.
 
 ## Why builds run on GitHub, not on Unraid
 
-Both tweaks need macOS to package: Sparkle's `build.sh` calls `xcrun`, and
-YTKACE's inject job runs on `macos-latest`. A Linux container can't do that, so
-the server orchestrates and GitHub builds. Forks of public repos get free
-Actions minutes, macOS included. Your Mac stays the fallback (see below).
+Packaging an iOS tweak usually needs macOS (`xcrun`, codesigning, or a job on
+`macos-latest`). A Linux container can't do that, so the server orchestrates and
+GitHub builds. Forks of public repos get free Actions minutes, macOS included.
+Your Mac stays the fallback (see below).
 
 ## 1. Try it on your Mac
 
@@ -87,58 +87,59 @@ ingress:
 ```
 
 Upload IPAs over the LAN: Cloudflare's free plan rejects request bodies over
-100 MB, and a YouTube IPA is bigger than that. Downloads aren't affected.
+100 MB, and many app IPAs are bigger than that. Downloads aren't affected.
 
-## 4. Set up the forks
+## 4. Add an app and its build
 
-1. Fork `itzzace/ytkace` and `efibalogh/sparkle-ig`, and enable Actions in each fork.
-2. In the dashboard, open each app and fill in **Your fork** (e.g. `you/ytkace`).
-   The workflow file and inputs are already filled in.
-3. **YTKACE:** the workflow ships with default decrypted-IPA links, so you can
-   leave both URL fields blank. It builds an iOS 16 and an iOS 17+ IPA; both
-   get imported.
-4. **Sparkle:** it needs a decrypted, *un-thinned* Instagram IPA. Press
-   **Upload .ipa** next to `decrypted_instagram_url` and Sidestash fills in a
-   private link to it, or paste a direct link from elsewhere (a Dropbox link
-   ending in `dl=1` works). Either way GitHub downloads it, so the link must
-   work from the internet: uploads need `PUBLIC_URL` set to your public address
-   and `/base/` forwarded.
-   Leave `for_sidestore` on `false`; your paid certificate handles app
-   extensions fine.
-5. **Sparkle caveat:** its workflow currently uses `runs-on: xcode-27`, a
-   runner image the author uses while waiting for Xcode 27 on `macos-latest`.
-   If your run sits in "queued", edit `.github/workflows/buildapp.yml` in your
-   fork to `runs-on: macos-latest`.
+1. Fork the tweak's repo on GitHub and enable Actions in your fork (GitHub turns
+   them off in new forks).
+2. In the dashboard, open **Add app**. Either drop an .ipa you already have, or
+   enter the base app's bundle ID, a name and the original repo.
+3. On the app's page, under **Build**, fill in **Your fork**, the **Workflow file**
+   (the one in `.github/workflows` that builds the IPA) and the **Branch**. Sidestash
+   reads the workflow's inputs and shows them as fields.
+4. Fill in the inputs. Many workflows want a link to a decrypted .ipa: press
+   **Upload .ipa** next to that field and Sidestash fills in a private link to the
+   file, or paste a direct link from elsewhere (a Dropbox link ending in `dl=1`
+   works). GitHub downloads it, so the link must work from the internet: uploads
+   need `PUBLIC_URL` set to your public address and `/base/` forwarded.
+5. Make sure the workflow uploads the IPA as an artifact (`actions/upload-artifact`);
+   that's where Sidestash picks it up. Artifacts with "deb" in their name are skipped.
 
-Then press **Run build**. The run card next to it shows each stage and links
+Then press **Start build**. The run panel next to it shows each stage and links
 to the log on GitHub. When it finishes, the new version appears under Versions.
+
+If a run fails before it builds anything, check the runner images in the
+workflow: a `runs-on` image that doesn't exist leaves the run queued, and
+`ubuntu-latest` moving to a new Ubuntu has broken tweak toolchains before.
+Pinning an image (e.g. `ubuntu-24.04`) fixes that.
 
 **Keeping up with the original repos.** Every few hours Sidestash checks each
 app's original repo for a new release and compares your fork's build branch with
-it. The Overview shows "Sparkle 1.6.2 released" when a release is newer than the
-version you've published, and "Fork 4 commits behind" with a **Sync fork** button.
-Sync does what GitHub's Sync fork button does; if your build branch only exists
-in your fork (say `sidestash`, holding your own edits), it syncs the default
-branch and then merges that into your build branch. A conflict is left for you to
-resolve on GitHub. **Check for updates** on the Overview checks right away.
+it. The Overview's **Updates** list shows when a release is newer than the
+version you've published, when the App Store has a newer base app, and when your
+fork is behind, with a **Sync fork** button. Sync does what GitHub's Sync fork
+button does; if your build branch only exists in your fork (say `sidestash`,
+holding your own edits), it syncs the default branch and then merges that into
+your build branch. A conflict is left for you to resolve on GitHub.
+**Check for updates** on the Overview checks right away.
 
-For routine updates you don't need the app page: the **Overview** lists every
-app with its latest version, flags when the App Store has a newer base version
-(**Check App Store versions**), and has a **Run build** panel on each card with
-the same inputs and Upload buttons.
+For routine updates you don't need the app page: every app on the Overview has
+a **Build** button that opens the same inputs, Upload buttons included.
 
 ## 5. Building on your Mac instead
 
-Build as each repo's README describes (`./build.sh ipa --release` for Sparkle),
-then either drag the .ipa onto the dashboard or run:
+Build as the tweak's README describes, then either drag the .ipa onto the
+dashboard or run:
 
 ```sh
 SIDESTASH_URL=http://192.168.1.10:8686 SIDESTASH_TOKEN=<ADMIN_TOKEN> \
-  ./scripts/upload.sh packages/Sparkle_v1.4.0_IG_v448.0.0.ipa "Built with FLEX"
+  ./scripts/upload.sh packages/MyTweak_v1.4.0.ipa "Built with FLEX"
 ```
 
-Keep the file names the build produces: the tweak version (YTKACE 1.1.4,
-Sparkle 1.4.0) is read from them to find the matching GitHub release.
+Keep the file names the build produces: the tweak version (1.4.0 above) is read
+from them with the app's **Tweak version pattern** to find the matching GitHub
+release.
 
 ## Security
 
@@ -162,21 +163,21 @@ Sparkle 1.4.0) is read from them to find the matching GitHub release.
 ## Things to know
 
 - **Version numbers come from the IPA**, which means the *base app* version
-  (YouTube 21.42.4), because AltStore checks the downloaded app against the
-  source. A new tweak release on the same YouTube version therefore looks like
+  (say Instagram 454.1), because AltStore checks the downloaded app against the
+  source. A new tweak release on the same base version therefore looks like
   the same version to update checkers. Install it from the source manually,
   or bump to a newer base.
-- **Latest = highest version number.** That keeps the iOS 16 build of YTKACE
-  from ever showing as an "update" over the iOS 17 one; AltStore picks the
-  newest build your iOS supports using `minOSVersion`.
+- **Latest = highest version number.** When a tweak ships separate builds for
+  older iOS versions, the older-iOS build never shows as an "update" over the
+  newer one; AltStore picks the newest build your iOS supports using `minOSVersion`.
 - **App Store notes** only attach when the IPA's version equals the version
   currently live in the App Store. "Re-pull changelogs" on a version refetches both.
 - **Everything in the source is public** to anyone with the URL, including the
-  modified YouTube and Instagram IPAs. Decrypted IPAs you upload for builds
-  are never listed: each has a long random link, and is deleted once a build
-  using it publishes, or after 3 days.
-- **Not affiliated** with Apple, AltStore, Google, Meta, X, or the authors of
-  the tweaks it can build. Their names appear only to say what the presets are for.
+  modified IPAs. Decrypted IPAs you upload for builds are never listed: each
+  has a long random link and is deleted when the run that used it finishes, or
+  after `UPLOAD_LINK_HOURS`.
+- **Not affiliated** with Apple, AltStore, or the authors of any tweak or app
+  you use it with.
 - **No warranty.** This is a personal project; it comes as is.
 - **The Docker image is published** to GHCR by `.github/workflows/docker.yml`
   on every push to `main`. It contains only the code, never `.env` or `/data`.

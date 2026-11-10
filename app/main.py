@@ -30,7 +30,7 @@ PUBLIC_URL = os.environ.get("PUBLIC_URL", "").rstrip("/")
 async def lifespan(_app):
     if not ADMIN_PASSWORD:
         logging.warning("ADMIN_PASSWORD is not set: the dashboard will refuse every login.")
-    store.seed_presets()
+    store.migrate()
     uploads.prune()
     builds.resume_unfinished()
     checker = asyncio.create_task(upstream.loop())
@@ -244,7 +244,7 @@ async def create_app(request: Request):
     body = await request.json()
     bundle_id = str(body.get("bundleIdentifier", "")).strip()
     if not re.fullmatch(r"[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+", bundle_id):
-        raise HTTPException(400, "Enter the base app's bundle ID, like com.google.ios.youtube.")
+        raise HTTPException(400, "Enter the base app's bundle ID, like com.example.app.")
     if bundle_id in store.data["apps"]:
         raise HTTPException(409, "That bundle ID is already in the dashboard.")
     repo = str(body.get("github_repo", "")).strip().removeprefix("https://github.com/").strip("/")
