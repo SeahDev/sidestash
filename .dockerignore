@@ -1,0 +1,14 @@
+# Only app/, requirements.txt and docker-entrypoint.sh go into the image.
+# Keep secrets and data out of the build context too.
+.env
+.env.*
+!.env.example
+data/
+.git/
+.github/
+.claude/
+**/__pycache__/
+**/*.pyc
+**/.DS_Store
+scripts/
+run-local.sh

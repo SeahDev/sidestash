@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Apps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#E9EDF1;--surface:#F7F9FB;--ink:#17202B;--steel:#566273;--line:#C9D1DA;--cobalt:#2B59C3;--cobalt-ink:#fff;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--paper:#12161B;--surface:#1A2027;--ink:#E4E8EE;--steel:#94A0AF;--line:#313A45;--cobalt:#6E95F0;--cobalt-ink:#0E1420;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "Schibsted Grotesk",ui-sans-serif,system-ui,sans-serif;
+  padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+main{max-width:620px;margin:0 auto;padding:48px 20px}
+h1{font-size:44px;letter-spacing:-.03em;line-height:1.05;margin:0 0 8px;font-weight:800}
+p{color:var(--steel);margin:0 0 24px}
+.add{display:inline-block;background:var(--cobalt);color:var(--cobalt-ink);text-decoration:none;font-weight:600;padding:10px 18px;border-radius:8px}
+.add:focus-visible,.copy:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+.copy{margin-left:8px;background:none;border:1px solid var(--line);color:var(--ink);font:inherit;padding:9px 14px;border-radius:8px;cursor:pointer}
+ul{list-style:none;padding:0;margin:40px 0 0}
+li{display:flex;gap:16px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+img{width:64px;height:64px;border-radius:24%;background:var(--surface);flex:none;object-fit:cover}
+li strong{display:block;font-size:18px}
+li span{color:var(--steel);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="name">Apps</h1>
+  <p id="sub"></p>
+  <a class="add" id="add" href="#">Add to AltStore</a><button class="copy" id="copy">Copy source URL</button>
+  <ul id="apps"></ul>
+</main>
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+fetch("/source.json").then(r=>r.json()).then(src=>{
+  const url = src.sourceURL;
+  document.title = src.name;
+  document.getElementById("name").textContent = src.name;
+  document.getElementById("sub").textContent = src.subtitle || "";
+  document.getElementById("add").href = "altstore://source?url=" + encodeURIComponent(url);
+  document.getElementById("copy").onclick = async e => { await navigator.clipboard.writeText(url); e.target.textContent = "Copied"; };
+  document.getElementById("apps").innerHTML = src.apps.map(a=>`<li><img alt="" src="${esc(a.iconURL)}">
+    <div><strong>${esc(a.name)}</strong><span>${esc(a.versions[0].version)} · ${esc(a.subtitle)}</span></div></li>`).join("");
+});
+</script>
+</body>
+</html>

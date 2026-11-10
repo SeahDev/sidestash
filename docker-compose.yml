@@ -1,0 +1,12 @@
+services:
+  sidestash:
+    build: .
+    image: sidestash:latest
+    container_name: sidestash
+    restart: unless-stopped
+    ports:
+      - "8686:8686"
+    env_file: .env
+    volumes:
+      # On Unraid, set DATA_PATH=/mnt/user/appdata/sidestash in .env
+      - ${DATA_PATH:-./data}:/data

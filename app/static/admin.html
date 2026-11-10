@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sidestash · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#E9EDF1; --surface:#F7F9FB; --sunk:#DFE4EA; --ink:#17202B; --steel:#566273; --line:#C9D1DA;
+  --cobalt:#2B59C3; --cobalt-ink:#fff; --ok:#1C7D52; --warn:#9A6412; --bad:#B6382A;
+  --radius-s:6px; --radius-m:12px;
+  --font:"Schibsted Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --paper:#12161B; --surface:#1A2027; --sunk:#232A33; --ink:#E4E8EE; --steel:#94A0AF; --line:#313A45;
+    --cobalt:#6E95F0; --cobalt-ink:#0E1420; --ok:#4FC28C; --warn:#E0A84A; --bad:#EE7F6E; color-scheme: dark; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--font);font-variant-numeric:tabular-nums}
+button,input,textarea,select{font:inherit;color:inherit}
+a{color:var(--cobalt)}
+:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+
+.shell{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+aside{border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-weight:800;font-size:19px;letter-spacing:-.02em;padding:0 8px}
+.brand small{display:block;font-weight:500;font-size:13px;color:var(--steel);letter-spacing:0}
+nav{display:flex;flex-direction:column;gap:2px}
+.navbtn{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--radius-s)}
+.navbtn:hover{background:var(--sunk)}
+.navbtn[aria-current="true"]{background:var(--surface);box-shadow:inset 0 0 0 1px var(--line)}
+.navbtn .meta{color:var(--steel);font-size:13px;margin-left:auto}
+.navbtn .meta.live{color:var(--warn);font-weight:600}
+.group-label{font-size:13px;color:var(--steel);padding:0 8px;margin-top:4px}
+.mini{width:32px;height:32px;border-radius:22%;background:var(--sunk);object-fit:cover;flex:none}
+.ph{display:grid;place-items:center;font-weight:800;color:var(--steel)}
+.mini.ph{font-size:15px}
+
+main{padding:28px clamp(16px,4vw,48px) 80px;max-width:1180px;width:100%}
+.source-bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m);padding:10px 12px;margin-bottom:28px}
+.source-bar code{font-size:14px;overflow-wrap:anywhere;flex:1;min-width:200px}
+
+/* the loud element: app header */
+.app-head{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;margin-bottom:8px}
+.squircle{width:104px;height:104px;border-radius:24%;object-fit:cover;background:var(--sunk);
+  box-shadow:0 18px 40px -18px var(--tint,#000), 0 0 0 1px color-mix(in srgb,var(--ink) 10%,transparent)}
+.squircle.ph{font-size:46px}
+h1{font-size:40px;line-height:1.05;letter-spacing:-.03em;margin:0 0 6px;font-weight:800}
+.sub{color:var(--steel);margin:0}
+section.block{margin-top:40px}
+h2{font-size:21px;letter-spacing:-.015em;margin:0 0 4px}
+.block > .sub{margin-bottom:14px}
+h3{font-size:15px;margin:0 0 10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+.btn{cursor:pointer;text-decoration:none;display:inline-block;border:1px solid var(--line);background:var(--surface);padding:7px 14px;border-radius:var(--radius-s);font-weight:600}
+.btn:hover{border-color:var(--steel)}
+.btn.primary{background:var(--cobalt);border-color:var(--cobalt);color:var(--cobalt-ink)}
+.btn.danger{color:var(--bad)}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn:disabled,.btn.disabled{opacity:.5;cursor:default}
+.btn.disabled{pointer-events:none}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m);padding:18px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:2fr 1.4fr 1fr;gap:12px}
+label.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--steel)}
+label.field input,label.field textarea,label.field select{padding:7px 9px;border:1px solid var(--line);border-radius:var(--radius-s);background:var(--paper);font-size:14px;width:100%}
+label.field textarea{min-height:110px;resize:vertical}
+label.field.wide{grid-column:1/-1}
+label.check{display:flex;gap:8px;align-items:center;font-size:14px}
+label.check.wide{grid-column:1/-1}
+.urlfield{display:flex;flex-flow:row wrap;gap:8px;align-items:flex-end}
+.urlfield .upbtn{margin-bottom:3px}
+.urlfield .progress{flex-basis:100%;margin-top:0}
+
+/* overview */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-top:20px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-m);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card-head{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.card-head .mini{width:48px;height:48px}
+.card-head h2{font-size:18px;margin:0}
+.card-status{font-size:14px;color:var(--steel);min-height:21px}
+.card-status a{white-space:nowrap}
+.card details{border-top:1px solid var(--line);padding-top:12px}
+.card summary{cursor:pointer;font-weight:600;list-style:none;display:flex;align-items:center;gap:8px}
+.card summary::-webkit-details-marker{display:none}
+.card summary::before{content:"▸";color:var(--steel);transition:transform .15s}
+.card details[open] summary::before{transform:rotate(90deg)}
+.card details > .runform{margin-top:12px}
+.card .grid2{grid-template-columns:1fr}
+.warnbox{border:1px solid color-mix(in srgb,var(--warn) 50%,var(--line));background:color-mix(in srgb,var(--warn) 8%,var(--surface));border-radius:var(--radius-s);padding:10px 12px;font-size:14px;margin:0}
+@media (max-width:420px){ .cards{grid-template-columns:1fr} }
+label.field small{font-size:12px;color:var(--steel);opacity:.8;font-family:ui-monospace,monospace}
+.hint{font-size:13px;color:var(--steel);margin:8px 0 0}
+.empty{color:var(--steel);padding:8px 0;margin:0}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.pill.ok{color:var(--ok)}.pill.warn{color:var(--warn)}.pill.bad{color:var(--bad)}.pill.dim{color:var(--steel)}
+
+/* actions control panel */
+.actions-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:start}
+.divider{border:0;border-top:1px solid var(--line);margin:16px 0}
+.runcard{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-m);padding:16px}
+.steps{list-style:none;margin:12px 0;padding:0;display:grid;gap:10px}
+.steps li{display:grid;grid-template-columns:18px 1fr;gap:10px;align-items:start;color:var(--steel)}
+.steps li .dot{width:14px;height:14px;margin-top:4px;border-radius:50%;border:2px solid var(--line);background:var(--surface)}
+.steps li.done{color:var(--ink)} .steps li.done .dot{background:var(--ok);border-color:var(--ok)}
+.steps li.now{color:var(--ink);font-weight:600} .steps li.now .dot{border-color:var(--warn);background:color-mix(in srgb,var(--warn) 25%,var(--surface))}
+.steps li.fail{color:var(--bad);font-weight:600} .steps li.fail .dot{background:var(--bad);border-color:var(--bad)}
+@media (prefers-reduced-motion:no-preference){ .steps li.now .dot{animation:pulse 1.6s ease-in-out infinite} }
+@keyframes pulse{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--warn) 22%,transparent)}}
+.runerr{color:var(--bad);font-size:14px;margin:6px 0 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--steel)}
+
+/* listing editor + preview */
+.listing-grid{display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+.preview-wrap{position:sticky;top:20px}
+.preview-label{font-size:13px;color:var(--steel);margin:0 0 6px}
+.pv{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:18px;overflow:hidden}
+.pv-head{display:grid;grid-template-columns:76px 1fr auto;gap:12px;align-items:center}
+.pv-icon{width:76px;height:76px;border-radius:24%;object-fit:cover;background:var(--sunk)}
+.pv-icon.ph{font-size:32px}
+.pv-name{font-weight:700;font-size:18px;line-height:1.2}
+.pv-dev,.pv-sub{font-size:13px;color:var(--steel)}
+.pv-get{background:var(--t);color:#fff;border:0;border-radius:999px;padding:5px 16px;font-weight:700;font-size:14px}
+.pv-shots{display:flex;gap:8px;overflow-x:auto;margin:14px -18px 0;padding:0 18px}
+.pv-shots img{height:200px;border-radius:12px;flex:none;background:var(--sunk)}
+.pv-desc{font-size:14px;margin:14px 0 0;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.pv-new{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;font-size:14px}
+.pv-new b{display:block;font-size:16px}
+.pv-new .meta{font-size:13px;color:var(--steel)}
+.pv-new p{white-space:pre-wrap;margin:6px 0 0;max-height:150px;overflow:auto}
+
+/* versions */
+.drop{display:block;border:2px dashed var(--line);border-radius:var(--radius-m);padding:18px;text-align:center;cursor:pointer;background:var(--surface);transition:border-color .15s, background .15s;margin-bottom:22px}
+.drop.over{border-color:var(--cobalt);background:color-mix(in srgb,var(--cobalt) 8%,var(--surface))}
+.drop strong{display:block}
+.drop span{color:var(--steel);font-size:14px}
+.progress{height:4px;background:var(--sunk);border-radius:2px;overflow:hidden;margin-top:10px;display:none}
+.progress i{display:block;height:100%;width:0;background:var(--cobalt);transition:width .2s}
+.timeline{list-style:none;margin:0;padding:0 0 0 18px;border-left:2px solid var(--line)}
+.timeline li{position:relative;padding:0 0 22px 18px}
+.timeline li::before{content:"";position:absolute;left:-26px;top:7px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--steel)}
+.timeline li.live::before{background:var(--cobalt);border-color:var(--cobalt)}
+.timeline li.hidden{opacity:.55}
+.v-title{font-weight:700;font-size:17px}
+.v-meta{color:var(--steel);font-size:13px}
+.notes{white-space:pre-wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-s);padding:10px 12px;margin:8px 0;max-height:220px;overflow:auto;font-size:14px}
+textarea.notes{width:100%;max-height:none;min-height:160px;resize:vertical}
+
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:var(--radius-s);font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+.toast.err{background:var(--bad);color:#fff}
+
+@media (max-width:960px){ .actions-grid,.listing-grid{grid-template-columns:1fr} .preview-wrap{position:static} }
+@media (max-width:800px){
+  .shell{grid-template-columns:1fr}
+  aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .app-head{grid-template-columns:auto 1fr}.app-head .head-actions{grid-column:1/-1}
+  .squircle{width:72px;height:72px}.squircle.ph{font-size:32px}h1{font-size:30px}
+  .grid3{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <div class="brand">Sidestash<small>Your AltStore source</small></div>
+    <nav id="nav"></nav>
+  </aside>
+  <main id="main"><p class="empty">Loading…</p></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+let S = null;
+let view = localStorage.getItem("view") || "";
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtSize = n => n > 1e9 ? (n/1e9).toFixed(2)+" GB" : (n/1e6).toFixed(1)+" MB";
+const fmtDate = s => s ? new Date(s).toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"}) : "";
+const ACTIVE = b => !["done","failed"].includes(b.status);
+
+function toast(msg, err=false){
+  const t = $("#toast"); t.textContent = msg; t.className = "toast show" + (err?" err":"");
+  clearTimeout(t._h); t._h = setTimeout(()=>t.className="toast", err?6000:2500);
+}
+async function api(path, opts={}){
+  // X-Sidestash marks requests as coming from this dashboard (see _from_other_site in main.py)
+  const headers = {"X-Sidestash": "1", ...(opts.body && !(opts.body instanceof FormData) ? {"Content-Type":"application/json"} : {})};
+  const r = await fetch(path, {...opts, headers});
+  if(!r.ok){ let m = r.statusText; try{ m = (await r.json()).detail || m }catch{} throw new Error(m) }
+  return r.json();
+}
+async function load(){ S = await api("/api/state"); render(); }
+function setView(v){ view = v; localStorage.setItem("view", v); render(); window.scrollTo(0,0); }
+
+const vnum = v => (v.version.match(/\d+/g)||[]).map(Number);
+function cmpVersion(a,b){ const x=vnum(a), y=vnum(b);
+  for(let i=0;i<Math.max(x.length,y.length);i++){ const d=(y[i]||0)-(x[i]||0); if(d) return d }
+  return b.date.localeCompare(a.date); }
+const versionsOf = bid => S.versions.filter(v=>v.bundleIdentifier===bid).sort(cmpVersion);
+const buildsOf = bid => S.builds.filter(b=>b.bundleIdentifier===bid);
+const iconFor = a => a.iconURL || a.appstore?.artworkUrl512 || "";
+function iconImg(url, name, cls){
+  const ph = `<span class="${cls} ph" aria-hidden="true">${esc((name||"?").trim()[0]||"?")}</span>`;
+  return url ? `<img class="${cls}" alt="" src="${esc(url)}" onerror="this.outerHTML='${ph.replace(/"/g,"&quot;")}'">` : ph;
+}
+const field = (k,label,val,ph="",cls="") => `<label class="field ${cls}">${esc(label)}<input data-f="${k}" value="${esc(val)}" placeholder="${esc(ph)}"></label>`;
+
+/* ---------------- layout ---------------- */
+function render(){
+  const apps = Object.values(S.apps).sort((a,b)=>(a.order||0)-(b.order||0));
+  if(!view || (view.startsWith("app:") && !S.apps[view.slice(4)])) view = "home";
+  renderNav(apps);
+  const url = S.public_url + "/source.json";
+  const bar = `<div class="source-bar"><span class="v-meta">Source URL</span><code>${esc(url)}</code>
+    <button class="btn small" data-copy="${esc(url)}">Copy</button>
+    <a class="btn small" href="/source.json" target="_blank" rel="noopener">View JSON</a></div>`;
+  $("#main").innerHTML = bar + (view.startsWith("app:") ? appView(S.apps[view.slice(4)]) : view==="new" ? newAppView() : view==="home" ? homeView(apps) : sourceView());
+  wire();
+  schedulePoll();
+}
+
+function renderNav(apps){
+  $("#nav").innerHTML = `<button class="navbtn" aria-current="${view==="home"}" data-view="home"><span class="mini ph" aria-hidden="true">▦</span><span>Overview</span></button>
+    <div class="group-label">Apps</div>
+    ${apps.map(a=>{
+      const v = versionsOf(a.bundleIdentifier)[0], running = buildsOf(a.bundleIdentifier).some(ACTIVE);
+      return `<button class="navbtn" aria-current="${view==="app:"+a.bundleIdentifier}" data-view="app:${esc(a.bundleIdentifier)}">
+        ${iconImg(iconFor(a),a.name,"mini")}<span>${esc(a.name)}</span>
+        <span class="meta ${running?"live":""}">${running?"Building":v?esc(v.version):"Empty"}</span></button>`}).join("")}
+    <button class="navbtn" aria-current="${view==="new"}" data-view="new"><span class="mini ph" aria-hidden="true">+</span><span>Add app</span></button>
+    <div class="group-label">Source</div>
+    <button class="navbtn" aria-current="${view==="source"}" data-view="source">Source settings</button>`;
+  $$("#nav [data-view]").forEach(b=>b.onclick=()=>setView(b.dataset.view));
+}
+
+function appView(a){
+  const st = a.appstore || {};
+  return `
+  <header class="app-head" style="--tint:${esc(a.tintColor||"#000")}">
+    ${iconImg(iconFor(a),a.name,"squircle")}
+    <div><h1>${esc(a.name)}</h1><p class="sub">${esc(a.bundleIdentifier)}</p>
+      <p class="v-meta">${st.version?`App Store: ${esc(a.base_app_name||st.trackName)} ${esc(st.version)}`:"App Store info not loaded yet"}</p></div>
+    <div class="head-actions"><button class="btn" data-act="appstore">Refresh App Store info</button></div>
+  </header>
+
+  <section class="block">
+    <h2>GitHub Actions</h2>
+    <p class="sub">Run the build in your fork. When it finishes, the server downloads the .ipa and publishes it to the source.</p>
+    <div class="actions-grid">
+      <div class="panel" id="actions">${actionsForm(a)}</div>
+      <div id="runs">${runsPanel(a)}</div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Listing</h2>
+    <p class="sub">What people see when they open this app in the source. The preview updates as you type.</p>
+    <div class="listing-grid">
+      <div class="panel" id="listing">${listingForm(a)}</div>
+      <div class="preview-wrap"><p class="preview-label">Preview</p><div id="preview"></div></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2>Versions</h2>
+    <p class="sub">Everything published for this app, newest version first.</p>
+    <label class="drop" id="drop" tabindex="0"><input type="file" accept=".ipa" id="ipaFile" hidden>
+      <strong>Upload an .ipa you built yourself</strong><span>Drop it here or click to choose a file.</span>
+      <div class="progress" id="prog"><i></i></div></label>
+    <div id="versions">${versionsList(a)}</div>
+  </section>`;
+}
+
+/* ---------------- GitHub Actions panel ---------------- */
+/* the inputs form, shared by the app page and the overview cards */
+function inputsMarkup(a){
+  const b = a.build || {inputs:{}};
+  if(schemaFor(b)) return schemaInputs(b);
+  const inputs = Object.entries(b.inputs||{});
+  const isBool = v => v==="true" || v==="false";
+  if(!inputs.length) return `<p class="empty">${b.fork_repo&&b.workflow ? (wfErrors[a.bundleIdentifier] ? esc(wfErrors[a.bundleIdentifier]) : "Reading the workflow's inputs…") : "Fill in your fork and workflow file, then save. The workflow's inputs will appear here."}</p>`;
+  return `<div class="grid2">${inputs.map(([k,v])=> isBool(v)
+    ? `<label class="field">${esc(k)}<select data-in="${esc(k)}"><option ${v==="true"?"selected":""}>true</option><option ${v==="false"?"selected":""}>false</option></select></label>`
+    : /url/i.test(k) ? urlField(k, esc(k), v, "Paste a link or upload the decrypted .ipa")
+    : `<label class="field">${esc(k)}<input data-in="${esc(k)}" value="${esc(v)}" spellcheck="false" placeholder="Blank uses the workflow default"></label>`).join("")}</div>`;
+}
+/* a link field with an Upload button: the server stores the file and fills in a private link */
+function urlField(name, labelHtml, value, placeholder){
+  return `<div class="field wide urlfield"><label class="field" style="flex:1">${labelHtml}
+      <input data-in="${esc(name)}" value="${esc(value)}" spellcheck="false" placeholder="${esc(placeholder)}"></label>
+    <label class="btn small upbtn">Upload .ipa<input type="file" accept=".ipa" hidden data-upfor="${esc(name)}"></label>
+    <div class="progress"><i></i></div></div>`;
+}
+function actionsForm(a){
+  const b = a.build || {inputs:{}};
+  const running = buildsOf(a.bundleIdentifier).some(ACTIVE);
+  return `
+    <h3>Workflow</h3>
+    <div class="grid3">
+      ${field("build.fork_repo","Your fork",b.fork_repo,"you/"+(a.github_repo||"repo").split("/").pop())}
+      ${field("build.workflow","Workflow file",b.workflow,"build.yml")}
+      ${field("build.ref","Branch",b.ref||"main")}
+    </div>
+    ${b.fork_repo && a.upstream ? `<div class="row" style="gap:8px;margin-top:10px;font-size:14px">${forkLine(a)}</div>` : ""}
+    <hr class="divider">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Inputs</h3>
+      ${b.fork_repo&&b.workflow&&S.github_ready?`<button class="btn small" data-act="loadWorkflow">Reload from workflow</button>`:""}</div>
+    ${inputsMarkup(a)}
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" data-act="build" ${!S.github_ready||running?"disabled":""}>Run build</button>
+      <button class="btn" data-act="saveActions">Save without running</button>
+    </div>
+    ${!S.github_ready?`<p class="hint" style="color:var(--bad)">Builds are off: set GITHUB_TOKEN on the container, then restart it.</p>`
+      : running?`<p class="hint">A build is already running for this app.</p>`
+      : schemaFor(b) ? "" : `<p class="hint">Blank URL fields use the workflow's own default link, if it has one.</p>`}`;
+}
+/* inputs read from the workflow file itself (POST /api/apps/:id/workflow) */
+const wfErrors = {}, wfTried = new Set();
+const schemaFor = b => { const s = b.schema;
+  return s && s.fork_repo===b.fork_repo && s.workflow===b.workflow && s.ref===(b.ref||"main") ? s : null };
+function schemaInputs(b){
+  const s = schemaFor(b);
+  if(!s.inputs.length) return `<p class="empty">This workflow takes no inputs.</p>`;
+  const val = i => (b.inputs||{})[i.name] ?? i.default;
+  const label = i => `${esc(i.description||i.name)}${i.required?" *":""}<small>${esc(i.name)}</small>`;
+  return `<div class="grid2">${s.inputs.map(i=>{
+    const v = val(i);
+    if(i.type==="boolean") return `<label class="check wide"><input type="checkbox" data-in="${esc(i.name)}" ${v==="true"?"checked":""}> ${esc(i.description||i.name)}</label>`;
+    if(i.type==="choice") return `<label class="field">${label(i)}<select data-in="${esc(i.name)}">${i.options.map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select></label>`;
+    if(/url|link/i.test(i.name) || /\b(url|link)\b/i.test(i.description||""))
+      return urlField(i.name, label(i), v, i.default ? "Default: "+i.default : "Paste a link or upload the .ipa");
+    const wide = (i.description||"").length > 40;
+    return `<label class="field ${wide?"wide":""}">${label(i)}<input data-in="${esc(i.name)}" value="${esc(v)}" spellcheck="false"
+      ${i.type==="number"?'inputmode="decimal"':""} placeholder="${i.default?"Default: "+esc(i.default):i.required?"Required":"Optional"}"></label>`;
+  }).join("")}</div>`;
+}
+async function loadWorkflow(appId, quiet=false){
+  try{ await api(`/api/apps/${appId}/workflow`, {method:"POST"}); delete wfErrors[appId]; if(!quiet) toast("Inputs loaded from the workflow") }
+  catch(e){ wfErrors[appId] = e.message; if(!quiet) toast(e.message,true) }
+  return load();
+}
+
+const STEPS = ["Start the workflow on GitHub","Build on GitHub","Download the .ipa to the server","Publish to the source"];
+function stepIndex(b){
+  if(b.status==="done") return 4;
+  if(b.status==="importing") return 2;
+  if(b.status==="failed") return !b.run_id ? 0 : b.conclusion==="success" ? 2 : 1;
+  return b.run_id ? 1 : 0;
+}
+function runsPanel(a){
+  const builds = buildsOf(a.bundleIdentifier);
+  if(!builds.length) return `<div class="runcard"><h3>Current run</h3><p class="empty">No builds yet. Fill in your fork and press Run build.</p></div>`;
+  const cur = builds[0], idx = stepIndex(cur), failed = cur.status==="failed";
+  const steps = STEPS.map((s,i)=>{
+    const cls = i<idx ? "done" : i===idx ? (failed?"fail":(cur.status==="done"?"done":"now")) : "";
+    return `<li class="${cls}"><span class="dot"></span><span>${esc(s)}</span></li>`}).join("");
+  const result = cur.status==="done" ? `Published ${cur.imported.map(i=>esc(i.version)+(i.duplicate?" (already published)":"")).join(" and ")}.` : "";
+  const older = builds.slice(1,6);
+  return `<div class="runcard">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">${ACTIVE(cur)?"Current run":"Last run"}</h3>
+      <span class="v-meta">Started ${fmtDate(cur.started)}</span></div>
+    <ol class="steps">${steps}</ol>
+    ${failed?`<p class="runerr">${esc(cur.error||"The build failed.")}</p>`:""}
+    ${result?`<p class="hint" style="color:var(--ok)">${result}</p>`:""}
+    <div class="row" style="margin-top:12px">
+      ${cur.run_url?`<a class="btn small" href="${esc(cur.run_url)}" target="_blank" rel="noopener">Open log on GitHub</a>`:""}
+      ${failed?`<button class="btn small" data-retry="${cur.id}">Check again</button>`:""}
+    </div>
+    ${older.length?`<hr class="divider"><h3>Earlier runs</h3><table><tbody>${older.map(b=>{
+      const cls = b.status==="done"?"ok":b.status==="failed"?"bad":"warn";
+      return `<tr><td>${fmtDate(b.started)}</td><td><span class="pill ${cls}">${b.status==="done"?"Published":b.status==="failed"?"Failed":"Running"}</span></td>
+        <td style="text-align:right">${b.run_url?`<a href="${esc(b.run_url)}" target="_blank" rel="noopener">Log</a>`:""}</td></tr>`}).join("")}</tbody></table>`:""}
+  </div>`;
+}
+
+/* ---------------- listing editor + preview ---------------- */
+function listingForm(a){
+  return `<div class="grid2">
+      ${field("name","Name",a.name)}${field("developerName","Developer",a.developerName)}
+      ${field("subtitle","Subtitle",a.subtitle,"","wide")}
+      ${field("tintColor","Tint color",a.tintColor,"#3A6EA5")}${field("category","Category",a.category,"social, entertainment…")}
+      ${field("iconURL","Icon URL",a.iconURL,"Blank uses the App Store icon","wide")}
+    </div>
+    <label class="field" style="margin-top:12px">Description<textarea data-f="localizedDescription" style="min-height:160px">${esc(a.localizedDescription)}</textarea></label>
+    <label class="field" style="margin-top:12px">Screenshot URLs, one per line<textarea data-f="screenshots">${esc((a.screenshots||[]).join("\n"))}</textarea></label>
+    <label class="check" style="margin-top:10px"><input type="checkbox" data-f="use_appstore_screenshots" ${a.use_appstore_screenshots?"checked":""}> Use the App Store screenshots when the list above is empty</label>
+    <hr class="divider">
+    <h3>Changelogs</h3>
+    <div class="grid2">
+      ${field("github_repo","Changelog repo",a.github_repo,"owner/name")}
+      ${field("base_app_name","Base app name",a.base_app_name,"YouTube")}
+      ${field("appstore_bundle_id","App Store bundle ID",a.appstore_bundle_id)}
+      ${field("tweak_version_regex","Tweak version pattern",a.tweak_version_regex)}
+    </div>
+    <p class="hint">The tweak version is read from the .ipa file name with that pattern, then matched to a GitHub release.</p>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" data-act="saveListing">Save listing</button>
+      <label class="btn">Upload icon<input type="file" accept="image/*" id="iconFile" hidden></label>
+      ${versionsOf(a.bundleIdentifier).length?"":`<button class="btn danger" data-act="deleteApp">Remove app</button>`}
+    </div>`;
+}
+
+function renderPreview(a){
+  const f = collect($("#listing"));
+  const latest = versionsOf(a.bundleIdentifier).find(v=>v.published);
+  const shots = (f.screenshots && f.screenshots.length) ? f.screenshots : (f.use_appstore_screenshots ? (a.appstore?.screenshotUrls||[]) : []);
+  const tint = /^#?[0-9a-f]{6}$/i.test(f.tintColor||"") ? "#"+f.tintColor.replace("#","") : "var(--cobalt)";
+  $("#preview").innerHTML = `<div class="pv" style="--t:${tint}">
+    <div class="pv-head">${iconImg(f.iconURL || a.appstore?.artworkUrl512 || "", f.name, "pv-icon")}
+      <div><div class="pv-name">${esc(f.name||"Untitled")}</div><div class="pv-dev">${esc(f.developerName)}</div><div class="pv-sub">${esc(f.subtitle)}</div></div>
+      <button class="pv-get" tabindex="-1" aria-hidden="true">Get</button></div>
+    ${shots.length?`<div class="pv-shots">${shots.slice(0,6).map(u=>`<img alt="" src="${esc(u)}">`).join("")}</div>`:""}
+    ${f.localizedDescription?`<p class="pv-desc">${esc(f.localizedDescription)}</p>`:""}
+    <div class="pv-new"><b>What's new</b>${latest
+      ? `<span class="meta">Version ${esc(latest.version)} · ${fmtDate(latest.date)} · ${fmtSize(latest.size)}</span><p>${esc(latest.localizedDescription)}</p>`
+      : `<span class="meta">Nothing published yet</span>`}</div></div>`;
+}
+
+/* ---------------- versions ---------------- */
+function versionsList(a){
+  const vs = versionsOf(a.bundleIdentifier);
+  if(!vs.length) return `<p class="empty">Nothing published yet. Run a build above or upload an .ipa.</p>`;
+  const firstLive = vs.find(v=>v.published);
+  return `<ol class="timeline">${vs.map(v=>{
+    const rel = v.github_release, store = v.appstore_notes, isLatest = v===firstLive;
+    const from = [rel?`<a href="${esc(rel.url)}" target="_blank" rel="noopener">GitHub ${esc(rel.tag)}</a>${rel.matched?"":" <span class='pill warn' title='No release matched the tweak version'>closest match</span>"}`:"",
+                  store?`App Store notes for ${esc(store.version)}`:""].filter(Boolean).join(" · ");
+    return `<li class="${v.published?(isLatest?"live":""):"hidden"}" data-vid="${v.id}">
+      <div class="v-title">${esc(v.version)} <span class="v-meta">(${esc(v.buildVersion)})</span>
+        ${v.tweakVersion?`<span class="pill dim">${esc(a.name)} ${esc(v.tweakVersion)}</span>`:""}
+        ${v.published?(isLatest?'<span class="pill ok">Latest</span>':""):'<span class="pill dim">Hidden</span>'}</div>
+      <div class="v-meta">${fmtDate(v.date)} · ${fmtSize(v.size)} · iOS ${esc(v.minOSVersion||"?")}+ · ${v.origin?.startsWith("actions")?"Built on GitHub":"Uploaded"}${from?" · "+from:""}</div>
+      <div class="notes" data-notes>${esc(v.localizedDescription)}</div>
+      <div class="row">
+        <button class="btn small" data-vact="edit">Edit notes</button>
+        <button class="btn small" data-vact="refresh">Re-pull changelogs</button>
+        <button class="btn small" data-vact="toggle">${v.published?"Hide from source":"Publish"}</button>
+        <a class="btn small" href="/ipa/${esc(v.file)}">Download</a>
+        <button class="btn small danger" data-vact="delete">Delete</button>
+      </div></li>`}).join("")}</ol>`;
+}
+
+/* ---------------- overview ---------------- */
+const openRuns = new Set();   // cards whose Run build panel is open, kept across re-renders
+function homeView(apps){
+  const offline = !S.public_reachable;
+  return `<div class="row" style="justify-content:space-between;align-items:flex-end">
+      <div><h1>Overview</h1><p class="sub">Start a build for any app. Open an app to edit its listing, workflow and versions.</p></div>
+      <button class="btn" data-act="checkUpdates">Check for updates</button></div>
+    <p class="v-meta" style="margin-top:6px">${lastChecked()}</p>
+    ${apps.length ? `<div class="cards">${apps.map(a=>appCard(a, offline)).join("")}</div>`
+      : `<p class="empty" style="margin-top:20px">No apps yet. Use Add app in the sidebar.</p>`}`;
+}
+function storeUpdate(a){
+  const st = a.appstore || {}, v = versionsOf(a.bundleIdentifier)[0];
+  if(!st.version) return "";
+  if(!v) return `<span class="pill dim">${esc(a.base_app_name||st.trackName||"App Store")} ${esc(st.version)}</span>`;
+  return cmpVersion(v, {version: st.version, date: v.date}) > 0
+    ? `<span class="pill warn" title="The App Store has a newer version than your latest build">${esc(a.base_app_name||"App Store")} ${esc(st.version)} is out</span>` : "";
+}
+/* original repo releases and fork sync state (from /api/updates/check) */
+function lastChecked(){
+  const ts = Object.values(S.apps).map(a=>a.upstream?.checked).filter(Boolean).sort().pop();
+  return ts ? `Original repos last checked ${fmtDate(ts)}. Checked automatically every few hours.` : "Original repos haven't been checked yet.";
+}
+function releaseBadge(a){
+  const r = a.upstream?.release;
+  if(!r) return "";
+  const label = `${esc(a.name)} ${esc(r.version||r.tag)}`;
+  return r.newer
+    ? `<a class="pill warn" href="${esc(r.url)}" target="_blank" rel="noopener" title="Newer than the ${esc(a.name)} version you've published${r.published_tweak?" ("+esc(r.published_tweak)+")":""}">${label} released</a>`
+    : `<a class="pill dim" href="${esc(r.url)}" target="_blank" rel="noopener" title="Newest release of ${esc(a.github_repo)}">${label}</a>`;
+}
+function forkLine(a, withButton=true){
+  const u = a.upstream || {}, f = u.fork;
+  const errs = (u.errors||[]).map(e=>`<span class="runerr" style="display:block">${esc(e)}</span>`).join("");
+  if(!f) return errs;
+  if(!f.parent) return `<span class="v-meta">${esc(f.note||"")}</span>${errs}`;
+  if(f.behind==null) return `<span class="v-meta">Couldn't compare with ${esc(f.parent)}.</span>${errs}`;
+  const where = `${esc(f.ref)} vs ${esc(f.parent)}:${esc(f.parent_branch)}`;
+  if(!f.behind) return `<span class="v-meta">Fork up to date (${where})${f.ahead?` · ${f.ahead} commit${f.ahead>1?"s":""} of your own`:""}</span>${errs}`;
+  return `<span class="pill warn">Fork ${f.behind} commit${f.behind>1?"s":""} behind</span>
+    <span class="v-meta">${where}${f.compare_url?` · <a href="${esc(f.compare_url)}" target="_blank" rel="noopener">see changes</a>`:""}</span>
+    ${withButton&&S.github_ready?`<button class="btn small" data-sync="${esc(a.bundleIdentifier)}">Sync fork</button>`:""}${errs}`;
+}
+function cardStatus(a){
+  const b = buildsOf(a.bundleIdentifier)[0], v = versionsOf(a.bundleIdentifier)[0];
+  const log = b?.run_url ? ` · <a href="${esc(b.run_url)}" target="_blank" rel="noopener">log</a>` : "";
+  if(b && ACTIVE(b)) return `<span class="pill warn">Building</span> ${esc(STEPS[Math.min(stepIndex(b),3)])}${log}`;
+  if(b?.status==="failed") return `<span class="pill bad">Last build failed</span> ${esc(b.error||"")}${log}`;
+  if(v) return `Latest ${esc(v.version)}${v.tweakVersion?` · ${esc(a.name)} ${esc(v.tweakVersion)}`:""} · ${fmtDate(v.date)}`;
+  return "Nothing published yet.";
+}
+function appCard(a, offline){
+  const b = a.build || {}, id = a.bundleIdentifier, running = buildsOf(id).some(ACTIVE);
+  const ready = b.fork_repo && b.workflow;
+  const hasUrl = /data-upfor/.test(inputsMarkup(a));
+  return `<article class="card" data-card="${esc(id)}">
+    <div class="card-head">${iconImg(iconFor(a),a.name,"mini")}
+      <div style="min-width:0"><h2>${esc(a.name)}</h2><div class="row" style="gap:6px">${releaseBadge(a)}${storeUpdate(a)}</div></div>
+      <button class="btn small" data-view="app:${esc(id)}">Edit</button></div>
+    <div class="card-status" data-status="${esc(id)}">${cardStatus(a)}</div>
+    ${ready && a.upstream ? `<div class="row" style="gap:8px;font-size:14px">${forkLine(a)}</div>` : ""}
+    ${!ready ? `<p class="hint" style="margin:0">No GitHub workflow set up. <a href="#" data-view="app:${esc(id)}">Add your fork</a> to build from here.</p>`
+    : `<details ${openRuns.has(id)?"open":""} data-runs="${esc(id)}"><summary>Run build <span class="v-meta" style="font-weight:400">${esc(b.fork_repo)} · ${esc(b.ref||"main")}</span></summary>
+      <div class="runform" data-runform="${esc(id)}">
+        ${inputsMarkup(a)}
+        ${hasUrl && offline ? `<p class="warnbox" style="margin-top:12px">Uploads give GitHub a link on ${esc(S.public_url)}, which GitHub can't reach. Set PUBLIC_URL to your public address first, or paste a link from elsewhere.</p>` : ""}
+        <div class="row" style="margin-top:12px">
+          <button class="btn primary" data-run="${esc(id)}" ${!S.github_ready||running?"disabled":""}>${running?"Building…":"Run build"}</button>
+        </div>
+      </div></details>`}
+  </article>`;
+}
+function wireHome(){
+  $$("[data-card] [data-view]").forEach(el=>el.onclick=e=>{ e.preventDefault(); setView(el.dataset.view) });
+  $$("details[data-runs]").forEach(d=>d.ontoggle=()=>{ d.open ? openRuns.add(d.dataset.runs) : openRuns.delete(d.dataset.runs) });
+  $$("[data-run]").forEach(btn=>btn.onclick=async()=>{
+    const id = btn.dataset.run, root = $(`[data-runform="${CSS.escape(id)}"]`);
+    btn.disabled = true;
+    try{
+      const {build, inputs} = actionsBody(id, root);
+      await api(`/api/apps/${id}`, {method:"PUT", body: JSON.stringify({build})});
+      await api(`/api/apps/${id}/build`, {method:"POST", body: JSON.stringify({inputs})});
+      toast(`${S.apps[id].name}: build started on GitHub`);
+      openRuns.delete(id);
+    }catch(e){ toast(e.message,true); btn.disabled = false; return }
+    load();
+  });
+  // fetch each app's workflow inputs once, if they aren't known yet
+  Object.values(S.apps).forEach(a=>{ const b = a.build||{}, key = [a.bundleIdentifier,b.fork_repo,b.workflow,b.ref||"main"].join("|");
+    if(b.fork_repo && b.workflow && S.github_ready && !schemaFor(b) && !wfTried.has(key)){ wfTried.add(key); loadWorkflow(a.bundleIdentifier, true) } });
+}
+/* status lines refresh while builds run, without touching open forms */
+function refreshHome(){
+  Object.values(S.apps).forEach(a=>{
+    const el = $(`[data-status="${CSS.escape(a.bundleIdentifier)}"]`); if(el) el.innerHTML = cardStatus(a);
+    const btn = $(`[data-run="${CSS.escape(a.bundleIdentifier)}"]`), running = buildsOf(a.bundleIdentifier).some(ACTIVE);
+    if(btn){ btn.disabled = !S.github_ready || running; btn.textContent = running ? "Building…" : "Run build" }
+  });
+}
+/* Upload .ipa buttons next to link fields */
+function wireUploads(){
+  $$("[data-upfor]").forEach(inp=>inp.onchange=async()=>{
+    const f = inp.files[0]; if(!f) return;
+    const wrap = inp.closest(".urlfield"), target = $(`[data-in="${CSS.escape(inp.dataset.upfor)}"]`, wrap), bar = $(".progress", wrap);
+    const btn = inp.closest(".upbtn"); btn.classList.add("disabled");
+    try{
+      const u = await uploadWithProgress("/api/uploads", f, bar);
+      target.value = u.url;
+      toast(`Uploaded ${u.bundleIdentifier||f.name} ${u.version||""}. The link is filled in.`);
+      if(!S.public_reachable) toast(`GitHub can't reach ${S.public_url}. This link only works once the server is public.`, true);
+    }catch(e){ toast(e.message,true) }
+    btn.classList.remove("disabled"); bar.style.display="none"; inp.value="";
+  });
+}
+
+/* ---------------- add app ---------------- */
+function newAppView(){
+  return `<h1>Add app</h1><p class="sub">Any tweaked .ipa works, not just YTKACE and Sparkle.</p>
+  <div class="panel" style="margin-top:20px">
+    <h3>Upload its .ipa</h3>
+    <p class="hint" style="margin:0 0 12px">The quickest way. The app is created from the file's bundle ID, name and version.</p>
+    <label class="drop" id="drop" tabindex="0" style="margin-bottom:0"><input type="file" accept=".ipa" id="ipaFile" hidden>
+      <strong>Drop an .ipa here</strong><span>or click to choose a file.</span>
+      <div class="progress" id="prog"><i></i></div></label>
+  </div>
+  <div class="panel" id="newApp" style="margin-top:16px">
+    <h3>Or set it up first</h3>
+    <p class="hint" style="margin:0 0 12px">For an app you'll build on GitHub Actions. You'll add your fork and workflow on the next page.</p>
+    <div class="grid2">
+      ${field("bundleIdentifier","Bundle ID of the base app","","com.example.app")}
+      ${field("name","Name","","Tweak name")}
+      ${field("github_repo","Original GitHub repo (for changelogs)","","owner/repo")}
+      ${field("base_app_name","Base app name","","YouTube")}
+    </div>
+    <div class="row" style="margin-top:16px"><button class="btn primary" data-act="createApp">Add app</button></div>
+  </div>`;
+}
+function wireDrop(onDone){
+  const zone = $("#drop"), input = $("#ipaFile");
+  if(!zone) return;
+  zone.onkeydown = e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); input.click() } };
+  const handle = async f => {
+    try{ const v = await uploadWithProgress("/api/upload", f);
+      toast(v.duplicate ? "That exact file is already published." : `Published ${v.version}`);
+      if(onDone(v)) return; }
+    catch(e){ toast(e.message,true) } load();
+  };
+  input.onchange = () => input.files[0] && handle(input.files[0]);
+  ["dragenter","dragover"].forEach(t=>zone.addEventListener(t,e=>{e.preventDefault();zone.classList.add("over")}));
+  ["dragleave","drop"].forEach(t=>zone.addEventListener(t,e=>{e.preventDefault();zone.classList.remove("over")}));
+  zone.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; f && handle(f) });
+}
+
+/* ---------------- source settings ---------------- */
+function sourceView(){
+  const s = S.source;
+  return `<h1>Source settings</h1><p class="sub">How the source itself appears when someone adds it.</p>
+  <div class="panel" id="sourceForm" style="margin-top:20px"><div class="grid2">
+    ${field("name","Name",s.name)}${field("identifier","Identifier (don't change after sharing)",s.identifier)}
+    ${field("subtitle","Subtitle",s.subtitle)}${field("tintColor","Tint color",s.tintColor)}
+    ${field("iconURL","Icon URL",s.iconURL)}${field("website","Website",s.website)}
+  </div>
+  <label class="field" style="margin-top:12px">Description<textarea data-f="description">${esc(s.description)}</textarea></label>
+  <div class="row" style="margin-top:16px"><button class="btn primary" data-act="saveSource">Save source</button></div></div>`;
+}
+
+/* ---------------- interactions ---------------- */
+function collect(root){
+  const out = {};
+  $$("[data-f]", root).forEach(el=>{
+    let v = el.type==="checkbox" ? el.checked : el.value;
+    if(el.dataset.f==="screenshots") v = v.split("\n").map(x=>x.trim()).filter(Boolean);
+    const [k, sub] = el.dataset.f.split(".");
+    if(sub){ out[k] = out[k] || {}; out[k][sub] = v } else out[k] = v;
+  });
+  return out;
+}
+function actionsBody(appId, root=$("#actions")){
+  const f = collect(root), inputs = {};
+  $$("[data-in]", root).forEach(i=>inputs[i.dataset.in]= i.type==="checkbox" ? String(i.checked) : i.value.trim());
+  const cur = S.apps[appId].build || {};
+  return {build: {...cur, ...f.build, inputs: {...cur.inputs, ...inputs}}, inputs};
+}
+function uploadWithProgress(url, file, bar=$("#prog")){
+  return new Promise((resolve,reject)=>{
+    const fd = new FormData(); fd.append("file", file);
+    const xhr = new XMLHttpRequest(); xhr.open("POST", url); xhr.setRequestHeader("X-Sidestash", "1");
+    if(bar) bar.style.display="block";
+    xhr.upload.onprogress = e => { if(bar && e.lengthComputable) bar.firstElementChild.style.width = (e.loaded/e.total*100)+"%" };
+    xhr.onload = () => { let j={}; try{ j = JSON.parse(xhr.responseText) }catch{}
+      xhr.status<300 ? resolve(j) : reject(new Error(j.detail || "Upload failed ("+xhr.status+")")) };
+    xhr.onerror = () => reject(new Error("Upload interrupted. Large files can hit reverse-proxy limits; use the server's LAN address."));
+    xhr.send(fd);
+  });
+}
+
+function wire(){
+  $$("[data-copy]").forEach(b=>b.onclick=async()=>{ await navigator.clipboard.writeText(b.dataset.copy); toast("Copied") });
+  const appId = view.startsWith("app:") ? view.slice(4) : null;
+
+  if(appId){
+    const a = S.apps[appId];
+    renderPreview(a);
+    $("#listing").addEventListener("input", ()=>renderPreview(a));
+    wireDrop(v => { if(!v.duplicate && v.bundleIdentifier!==appId){ load().then(()=>setView("app:"+v.bundleIdentifier)); return true } });
+    const icon = $("#iconFile");
+    icon.onchange = async()=>{ try{ await uploadWithProgress(`/api/apps/${appId}/icon`, icon.files[0]); toast("Icon updated") }catch(e){ toast(e.message,true) } load() };
+    wireLive();
+    const b = a.build || {};
+    const key = [appId, b.fork_repo, b.workflow, b.ref||"main"].join("|");
+    if(b.fork_repo && b.workflow && S.github_ready && !schemaFor(b) && !wfTried.has(key)){ wfTried.add(key); loadWorkflow(appId, true) }
+  }
+  if(view==="home") wireHome();
+  wireUploads();
+  $$("[data-sync]").forEach(btn=>btn.onclick=async()=>{
+    const a = S.apps[btn.dataset.sync], f = a.upstream.fork;
+    if(!confirm(`Pull ${f.behind} commit${f.behind>1?"s":""} from ${f.parent} into ${a.build.fork_repo} (${f.ref})?\n\nThis changes your fork on GitHub, like its Sync fork button.`)) return;
+    btn.disabled = true;
+    try{ const r = await api(`/api/apps/${a.bundleIdentifier}/sync`, {method:"POST"}); toast(r.steps.join(" ")) }
+    catch(e){ toast(e.message,true) }
+    load();
+  });
+  if(view==="new") wireDrop(v => { load().then(()=>setView("app:"+v.bundleIdentifier)); return true });
+
+  $$("[data-act]").forEach(btn=>btn.onclick=async()=>{
+    const act = btn.dataset.act; btn.disabled = true;
+    try{
+      if(act==="checkUpdates"){
+        const ids = Object.keys(S.apps);
+        await Promise.all([api("/api/updates/check", {method:"POST"}),
+          ...ids.map(id=>api(`/api/apps/${id}/appstore`, {method:"POST"}).catch(()=>{}))]);
+        toast("Checked releases, forks and the App Store");
+      }
+      if(act==="loadWorkflow"){ await api(`/api/apps/${appId}`, {method:"PUT", body: JSON.stringify({build: actionsBody(appId).build})}); return loadWorkflow(appId) }
+      if(act==="saveActions"){ await api(`/api/apps/${appId}`, {method:"PUT", body: JSON.stringify({build: actionsBody(appId).build})}); toast("Saved") }
+      if(act==="build"){
+        const {build, inputs} = actionsBody(appId);
+        await api(`/api/apps/${appId}`, {method:"PUT", body: JSON.stringify({build})});
+        await api(`/api/apps/${appId}/build`, {method:"POST", body: JSON.stringify({inputs})});
+        toast("Build started on GitHub");
+      }
+      if(act==="saveListing"){ await api(`/api/apps/${appId}`, {method:"PUT", body: JSON.stringify(collect($("#listing")))}); toast("Listing saved") }
+      if(act==="appstore"){ const i = await api(`/api/apps/${appId}/appstore`, {method:"POST"}); toast(`App Store: ${i.trackName} ${i.version}`) }
+      if(act==="deleteApp"){ if(!confirm("Remove this app from the dashboard?")) { btn.disabled=false; return }
+        await api(`/api/apps/${appId}`, {method:"DELETE"}); view = "" }
+      if(act==="createApp"){
+        const a = await api("/api/apps", {method:"POST", body: JSON.stringify(collect($("#newApp")))});
+        toast(`Added ${a.name}`); await load(); return setView("app:"+a.bundleIdentifier);
+      }
+      if(act==="saveSource"){ await api("/api/source", {method:"PUT", body: JSON.stringify(collect($("#sourceForm")))}); toast("Source saved") }
+    }catch(e){ toast(e.message,true); btn.disabled = false; return }
+    btn.disabled = false; load();
+  });
+}
+
+/* parts that refresh while a build runs, without touching the forms */
+function wireLive(){
+  const appId = view.slice(4);
+  $$("#runs [data-retry]").forEach(b=>b.onclick=async()=>{ try{ await api(`/api/builds/${b.dataset.retry}/retry`,{method:"POST"}); toast("Checking the run again") }catch(e){ toast(e.message,true) } refreshLive() });
+  $$("#versions [data-vact]").forEach(btn=>btn.onclick=async()=>{
+    const li = btn.closest("li"), vid = li.dataset.vid, v = S.versions.find(x=>x.id===vid), act = btn.dataset.vact;
+    try{
+      if(act==="edit"){
+        const box = $("[data-notes]", li);
+        if(box.tagName==="TEXTAREA"){ await api(`/api/versions/${vid}`, {method:"PATCH", body: JSON.stringify({localizedDescription: box.value})}); toast("Notes saved"); return refreshLive() }
+        const ta = document.createElement("textarea"); ta.className="notes"; ta.dataset.notes=""; ta.value = v.localizedDescription||"";
+        box.replaceWith(ta); ta.focus(); btn.textContent = "Save notes"; return;
+      }
+      if(act==="refresh"){ btn.disabled=true; await api(`/api/versions/${vid}/refresh`, {method:"POST"}); toast("Changelogs updated") }
+      if(act==="toggle"){ await api(`/api/versions/${vid}`, {method:"PATCH", body: JSON.stringify({published: !v.published})}) }
+      if(act==="delete"){ if(!confirm(`Delete ${v.version} and its .ipa file? This can't be undone.`)) return;
+        await api(`/api/versions/${vid}`, {method:"DELETE"}); toast("Deleted") }
+    }catch(e){ toast(e.message,true) }
+    refreshLive();
+  });
+}
+
+async function refreshLive(){
+  const prev = S;
+  S = await api("/api/state");
+  if(view==="home"){
+    const done = prev.builds.filter(ACTIVE).map(b=>S.builds.find(x=>x.id===b.id)).filter(b=>b && !ACTIVE(b));
+    done.forEach(b=>{ const n = S.apps[b.bundleIdentifier]?.name || "Build";
+      b.status==="done" ? toast(`${n}: published to the source`) : toast(`${n}: the build failed`, true) });
+    refreshHome(); return schedulePoll();
+  }
+  if(!view.startsWith("app:")) return render();
+  const a = S.apps[view.slice(4)];
+  if(!a) return render();
+  renderNav(Object.values(S.apps).sort((x,y)=>(x.order||0)-(y.order||0)));
+  $("#runs").innerHTML = runsPanel(a);
+  const editing = $("#versions textarea");
+  if(!editing) $("#versions").innerHTML = versionsList(a);
+  // re-enable the Run button once the build is over, keeping typed inputs
+  const wasRunning = prev.builds.some(b=>b.bundleIdentifier===a.bundleIdentifier && ACTIVE(b));
+  const running = buildsOf(a.bundleIdentifier).some(ACTIVE);
+  const runBtn = $('[data-act="build"]'); if(runBtn) runBtn.disabled = !S.github_ready || running;
+  if(wasRunning && !running){
+    const b = buildsOf(a.bundleIdentifier)[0];
+    b.status==="done" ? toast("Build published to the source") : toast("The build failed. See the run for details.", true);
+  }
+  renderPreview(a);
+  wireLive();
+  schedulePoll();
+}
+
+let pollTimer = null;
+function schedulePoll(){
+  clearTimeout(pollTimer);
+  if(S.builds.some(ACTIVE)) pollTimer = setTimeout(()=>refreshLive().catch(()=>schedulePoll()), 8000);
+}
+load().catch(e=>{ $("#main").innerHTML = `<p class="empty">Couldn't load the dashboard: ${esc(e.message)}</p>` });
+</script>
+</body>
+</html>
