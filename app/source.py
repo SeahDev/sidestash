@@ -2,6 +2,8 @@
 import os
 import re
 
+from .news import for_source as news_for_source
+
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "").rstrip("/")
 
 
@@ -142,7 +144,8 @@ def build_source(data: dict, base_url: str) -> dict:
         "website": src.get("website") or base,
         "tintColor": src.get("tintColor", "").lstrip("#"),
         "sourceURL": f"{base}/source.json",
-        "featuredApps": [a["bundleIdentifier"] for a in apps_out],
+        "featuredApps": [a["bundleIdentifier"] for a in apps_out
+                         if data["apps"][a["bundleIdentifier"]].get("featured", True)],
         "apps": apps_out,
-        "news": [],
+        "news": news_for_source(data, base),
     }

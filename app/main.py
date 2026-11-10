@@ -11,7 +11,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
-from . import builds, upstream, uploads, workflow
+from . import builds, news, upstream, uploads, workflow
 from .enrich import compose_notes
 from .ingest import enrich_version, ingest, refresh_appstore, slug
 from .ipa import IPAError, inspect_ipa
@@ -264,7 +264,7 @@ async def update_source(request: Request):
 
 
 APP_FIELDS = {"name", "subtitle", "developerName", "localizedDescription", "tintColor", "category",
-              "iconURL", "screenshots", "use_appstore_screenshots", "github_repo",
+              "iconURL", "screenshots", "use_appstore_screenshots", "featured", "github_repo",
               "appstore_bundle_id", "base_app_name", "tweak_version_regex", "build", "order"}
 
 
@@ -327,6 +327,47 @@ async def refresh_store(bundle_id: str):
     if not info:
         raise HTTPException(404, "The App Store has no listing for that bundle ID in the US store.")
     return info
+
+
+# ---- news ----
+
+@app.post("/api/news", dependencies=[admin])
+async def create_news(request: Request):
+    try:
+        return news.create(await request.json())
+    except news.NewsError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.put("/api/news/{nid}", dependencies=[admin])
+async def update_news(nid: str, request: Request):
+    try:
+        return news.update(nid, await request.json())
+    except KeyError:
+        raise HTTPException(404)
+    except news.NewsError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/news/{nid}", dependencies=[admin])
+def delete_news(nid: str):
+    if not news.delete(nid):
+        raise HTTPException(404)
+    return {"ok": True}
+
+
+@app.post("/api/news/image", dependencies=[admin])
+async def upload_news_image(file: UploadFile = File(...)):
+    """Images for news items live with the app icons, so /icons/ serves them publicly."""
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in (".png", ".jpg", ".jpeg", ".webp"):
+        raise HTTPException(400, "Images must be PNG, JPEG or WebP.")
+    data = await file.read()
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(400, "Keep images under 8 MB; store apps show them at phone size.")
+    name = f"news-{new_id()}{ext}"
+    (ICON_DIR / name).write_bytes(data)
+    return {"url": f"/icons/{name}"}
 
 
 @app.post("/api/apps/{bundle_id}/icon", dependencies=[admin])
@@ -435,6 +476,14 @@ async def start_build(bundle_id: str, request: Request):
     body = await request.json()
     try:
         return await builds.start_build(bundle_id, body.get("inputs", {}))
+    except builds.BuildError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/builds/{build_id}/rerun", dependencies=[admin])
+async def rerun_build(build_id: str):
+    try:
+        return await builds.retry_build(build_id)
     except builds.BuildError as e:
         raise HTTPException(400, str(e))
 

@@ -78,6 +78,32 @@ def remove_linked(values) -> None:
         remove(u["id"])
 
 
+def hold_linked(values) -> list[dict]:
+    """A failed run: the links in its inputs may be in a public log, so give each file a
+    new secret link and keep it for "Try again". Returns [{id, token}] with the old tokens."""
+    tokens = {m.group(1) for v in values for m in LINK.finditer(str(v))}
+    held = []
+    for u in [u for u in _list() if u["token"] in tokens]:
+        held.append({"id": u["id"], "token": u["token"]})
+        u["token"] = secrets.token_urlsafe(24)
+        u["downloads"] = 0
+    if held:
+        store.save()
+    return held
+
+
+def relink(values: dict, held: list[dict]) -> dict:
+    """Swap each held file's old link in these inputs for its current one.
+    Raises LookupError if a file has expired since."""
+    out = dict(values)
+    for h in held:
+        u = next((u for u in _list() if u["id"] == h["id"]), None)
+        if not u or time.time() - u.get("added_ts", 0) > MAX_AGE:
+            raise LookupError("The IPA you uploaded for this build has expired. Upload it again and start a new build.")
+        out = {k: str(v).replace(f"/base/{h['token']}/", f"/base/{u['token']}/") for k, v in out.items()}
+    return out
+
+
 def prune() -> None:
     cutoff = time.time() - MAX_AGE
     for u in [u for u in _list() if u.get("added_ts", 0) < cutoff]:

@@ -27,6 +27,7 @@ DEFAULT_APP = {
     "iconURL": "",
     "screenshots": [],
     "use_appstore_screenshots": True,
+    "featured": True,                   # listed in the source's featuredApps
     "github_repo": "",
     "appstore_bundle_id": "",
     "base_app_name": "",
@@ -93,10 +94,14 @@ class Store:
 
     def migrate(self):
         """Bring data saved by older versions up to date. Runs at startup."""
+        self.data.setdefault("news", [])
         # Older builds copied the App Store description into the app. Clear any
         # that are still verbatim copies so the tweak description is used.
         changed = False
         for app in self.data["apps"].values():
+            if "featured" not in app:       # before the switch existed, every app was featured
+                app["featured"] = True
+                changed = True
             store_desc = (app.get("appstore") or {}).get("description", "")
             if store_desc and app.get("localizedDescription", "").strip() == store_desc.strip():
                 app["localizedDescription"] = ""

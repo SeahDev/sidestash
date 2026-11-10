@@ -108,6 +108,9 @@ main{min-width:0;padding:34px clamp(20px,4vw,52px) 80px;max-width:1080px}
 .status::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--text-3);flex:none}
 .status.ok::before{background:var(--green)} .status.busy::before{background:var(--orange)} .status.bad::before{background:var(--red)}
 .status.bad{color:var(--red)}
+.linkish{all:unset;color:var(--accent);cursor:pointer;font-weight:500}
+.linkish:hover{text-decoration:underline} .linkish:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+.linkish:disabled{opacity:.5;cursor:default}
 @media (prefers-reduced-motion:no-preference){ .status.busy::before{animation:blink 1.4s ease-in-out infinite} }
 @keyframes blink{50%{opacity:.35}}
 
@@ -228,6 +231,23 @@ main{min-width:0;padding:34px clamp(20px,4vw,52px) 80px;max-width:1080px}
 textarea.notes{width:100%;max-height:none;min-height:160px;resize:vertical;padding:10px 12px;border:1px solid var(--sep);border-radius:10px;background:var(--bg)}
 .v-actions{display:flex;flex-wrap:wrap;gap:8px}
 
+/* ---------- news ---------- */
+.news-card{border-radius:18px;overflow:hidden;background:var(--tint,var(--accent));color:#fff;box-shadow:0 0 0 .5px var(--icon-edge)}
+.news-card .body{padding:18px 18px 16px}
+.news-card h3{font:700 20px/1.2 var(--font-display);letter-spacing:-.02em;margin:0;overflow-wrap:anywhere}
+.news-card p{margin:6px 0 0;font-size:15px;line-height:1.4;opacity:.92;white-space:pre-wrap;overflow-wrap:anywhere}
+.news-card .meta{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:12px;font-weight:600;opacity:.8}
+.news-card img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:rgba(0,0,0,.15)}
+.news-list{list-style:none;margin:0;padding:0}
+.news-list li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--sep-soft)}
+.news-list li:last-child{border-bottom:0}
+.news-list li.draft{opacity:.6}
+.news-swatch{width:44px;height:44px;border-radius:10px;background:var(--tint,var(--accent));flex:none;object-fit:cover;box-shadow:0 0 0 .5px var(--icon-edge)}
+.news-title{font-size:15px;font-weight:600;letter-spacing:-.015em;overflow-wrap:anywhere}
+.news-sub{font-size:13px;color:var(--text-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.color-field{display:flex;gap:8px;align-items:center}
+.color-field input[type=color]{width:44px;min-width:44px;padding:2px;cursor:pointer}
+
 /* ---------- toast ---------- */
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);max-width:calc(100vw - 32px);padding:11px 18px;border-radius:14px;
   background:rgba(29,29,31,.92);color:#f5f5f7;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;
@@ -247,7 +267,7 @@ textarea.notes{width:100%;max-height:none;min-height:160px;resize:vertical;paddi
   .shell{display:block}
   .sidebar{display:none}
   main{padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 96px)}
-  .tabbar{display:grid;grid-template-columns:repeat(3,1fr);position:fixed;left:0;right:0;bottom:0;z-index:20;
+  .tabbar{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:20;
     padding:6px 8px calc(env(safe-area-inset-bottom) + 4px);background:var(--bar);border-top:.5px solid var(--sep);
     -webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px)}
   .tabbar button{all:unset;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:46px;justify-content:center;font-size:10.5px;font-weight:500;color:var(--text-3);cursor:pointer}
@@ -284,6 +304,8 @@ textarea.notes{width:100%;max-height:none;min-height:160px;resize:vertical;paddi
   .check{min-height:44px}
   .back{min-height:44px;margin-bottom:6px}
   .pv-shots img{height:200px}
+  .news-list li{grid-template-columns:auto minmax(0,1fr)}
+  .news-list li .lockup-actions{grid-column:2}
   .v-actions .pill{min-height:36px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -314,6 +336,7 @@ const ACTIVE = b => !["done","failed"].includes(b.status);
 const plural = (n, word) => `${n} ${word}${n===1?"":"s"}`;
 
 const ICONS = {
+  news: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M7.5 9h9M7.5 12.5h9M7.5 16h5"/></svg>',
   home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/></svg>',
   add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg>',
   source: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h10"/><circle cx="18" cy="17.5" r="2"/></svg>',
@@ -372,7 +395,7 @@ function render(){
   const apps = sortedApps();
   if(!view || (view.startsWith("app:") && !S.apps[view.slice(4)])) view = "home";
   renderNav(apps);
-  $("#main").innerHTML = view.startsWith("app:") ? appView(S.apps[view.slice(4)]) : view==="new" ? newAppView() : view==="home" ? homeView(apps) : sourceView();
+  $("#main").innerHTML = view.startsWith("app:") ? appView(S.apps[view.slice(4)]) : view==="new" ? newAppView() : view==="home" ? homeView(apps) : view==="news" ? newsView() : sourceView();
   wire();
   schedulePoll();
 }
@@ -385,8 +408,8 @@ function renderNav(apps){
     + apps.map(a=>{ const busy = buildsOf(a.bundleIdentifier).some(ACTIVE), v = versionsOf(a.bundleIdentifier)[0];
         return `<button class="side-item" aria-current="${view==="app:"+a.bundleIdentifier}" data-view="app:${esc(a.bundleIdentifier)}">
           ${iconImg(iconFor(a),a.name,"icon s")}<span>${esc(a.name)}</span><span class="meta">${busy?"Building":v?esc(v.version):""}</span></button>` }).join("")
-    + `<div class="side-label">Manage</div>` + item("new","Add app",ICONS.add) + item("source","Source",ICONS.source);
-  $("#tabbar").innerHTML = [["home","Overview",ICONS.home],["new","Add app",ICONS.add],["source","Source",ICONS.source]]
+    + `<div class="side-label">Manage</div>` + item("new","Add app",ICONS.add) + item("news","News",ICONS.news) + item("source","Source",ICONS.source);
+  $("#tabbar").innerHTML = [["home","Overview",ICONS.home],["new","Add app",ICONS.add],["news","News",ICONS.news],["source","Source",ICONS.source]]
     .map(([v,l,i])=>`<button aria-current="${cur(v)}" data-view="${v}">${i}<span>${l}</span></button>`).join("");
   $$("#nav [data-view], #tabbar [data-view]").forEach(b=>b.onclick=()=>setView(b.dataset.view));
 }
@@ -427,7 +450,7 @@ function cardStatus(a){
   const b = buildsOf(a.bundleIdentifier)[0];
   const log = b?.run_url ? ` · <a href="${esc(b.run_url)}" target="_blank" rel="noopener">Log</a>` : "";
   if(b && ACTIVE(b)) return `<span class="status busy">${esc(STEPS[Math.min(stepIndex(b),3)])}${log}</span>`;
-  if(b?.status==="failed") return `<span class="status bad">Build failed${log}</span>`;
+  if(b?.status==="failed") return `<span class="status bad">Build failed${log} · <button class="linkish" data-rerun="${b.id}">Try again</button></span>`;
   if(b?.status==="done") return `<span class="status ok">Published ${fmtDay(b.updated||b.started)}${log}</span>`;
   return "";
 }
@@ -650,7 +673,8 @@ function runsPanel(a){
     ${result?`<p style="color:var(--green);font-size:14px;margin:10px 0 0">${result}</p>`:""}
     <div class="form-actions" style="margin-top:14px">
       ${cur.run_url?`<a class="pill" href="${esc(cur.run_url)}" target="_blank" rel="noopener">Open log on GitHub</a>`:""}
-      ${failed?`<button class="pill" data-retry="${cur.id}">Check again</button>`:""}
+      ${failed?`<button class="pill filled" data-rerun="${cur.id}">Try again</button>`:""}
+      ${failed&&!cur.conclusion?`<button class="pill" data-retry="${cur.id}">Check again</button>`:""}
     </div>
     ${older.length?`<div class="group-sub"><h4>Earlier builds</h4></div><ul class="history">${older.map(b=>{
       const st = b.status==="done"?'<span class="status ok">Published</span>':b.status==="failed"?'<span class="status bad">Failed</span>':'<span class="status busy">Running</span>';
@@ -668,6 +692,7 @@ function listingForm(a){
       <label class="field wide">Description<textarea data-f="localizedDescription" style="min-height:150px" placeholder="Blank writes one from the subtitle and repo">${esc(a.localizedDescription)}</textarea></label>
       <label class="field wide">Screenshot links, one per line<textarea data-f="screenshots" autocapitalize="off">${esc((a.screenshots||[]).join("\n"))}</textarea></label>
       <label class="check wide"><input type="checkbox" data-f="use_appstore_screenshots" ${a.use_appstore_screenshots?"checked":""}> Use the App Store screenshots when the list above is empty</label>
+      <label class="check wide"><input type="checkbox" data-f="featured" ${a.featured!==false?"checked":""}> Featured (shown at the top of the source in AltStore)</label>
     </div>
     <div class="group-sub"><h4>Changelogs</h4></div>
     <div class="grid">
@@ -773,6 +798,101 @@ function wireDrop(onDone){
 }
 
 /* ---------------- source settings ---------------- */
+/* ---------------- news ---------------- */
+let editingNews = null;   // id of the item in the editor, or null for a new one
+const toLocalInput = iso => { const d = iso ? new Date(iso) : new Date(); d.setSeconds(0,0);
+  return new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,16) };
+const newsTint = n => { const t = (n.tintColor || (S.apps[n.appID]||{}).tintColor || S.source.tintColor || "").replace("#","");
+  return /^[0-9a-f]{6}$/i.test(t) ? "#"+t : "" };
+function newsView(){
+  const list = [...(S.news||[])].sort((a,b)=>b.date.localeCompare(a.date));
+  const n = editingNews ? (S.news||[]).find(x=>x.id===editingNews) || {} : {};
+  const apps = sortedApps();
+  return `<div class="page-top"><div><p class="eyebrow">Manage</p><h1 class="large-title">News</h1></div>
+      ${editingNews?`<button class="text-btn" data-act="newNews">New item</button>`:""}</div>
+  <section class="shelf">${shelfHead(editingNews?"Edit item":"New item", `<span class="note">Shows in the News tab of AltStore and other store apps</span>`)}
+    <div class="two-col" style="margin-top:18px">
+      <div class="group" id="newsForm">
+        <div class="grid">
+          ${field("title","Title",n.title,"Sparkle 1.6.2 is here","wide")}
+          <label class="field wide">Caption<textarea data-f="caption" style="min-height:90px" placeholder="A sentence or two about it">${esc(n.caption)}</textarea></label>
+          <label class="field">Related app<select data-f="appID"><option value="">None</option>
+            ${apps.map(a=>`<option value="${esc(a.bundleIdentifier)}" ${a.bundleIdentifier===n.appID?"selected":""}>${esc(a.name)}</option>`).join("")}</select></label>
+          <label class="field">Date<input type="datetime-local" data-f="date" value="${toLocalInput(n.date)}"></label>
+          ${field("url","Link","" + (n.url||""),"https://… (optional)","wide")}
+          <div class="field wide urlfield"><label class="field">Image<input data-f="imageURL" value="${esc(n.imageURL)}" placeholder="Link to an image, or upload one" autocapitalize="off" autocorrect="off"></label>
+            <label class="pill upbtn">Upload image<input type="file" accept="image/png,image/jpeg,image/webp" hidden id="newsImage"></label></div>
+          <label class="field">Tint color<span class="color-field"><input type="color" id="newsColor" value="${newsTint(n)||"#0071e3"}">
+            <input data-f="tintColor" value="${esc(n.tintColor)}" placeholder="App's color" autocapitalize="off"></span></label>
+          <label class="check wide"><input type="checkbox" data-f="notify" ${n.notify?"checked":""}> Send a notification (AltStore shows one when it next refreshes the source)</label>
+          <label class="check wide"><input type="checkbox" data-f="published" ${n.published===false?"":"checked"}> Published (untick to keep it as a draft)</label>
+        </div>
+        <div class="form-actions">
+          <button class="pill filled large" data-act="saveNews">${editingNews?"Save changes":"Post"}</button>
+          ${editingNews?`<button class="pill large" data-act="newNews">Cancel</button>`:""}
+        </div>
+      </div>
+      <div class="preview"><p class="label">Preview</p><div id="newsPreview"></div></div>
+    </div>
+  </section>
+  <section class="shelf">${shelfHead("Posted", `<span class="note">${plural(list.length,"item")}</span>`)}
+    ${list.length ? `<ul class="news-list">${list.map(newsRow).join("")}</ul>` : `<p class="empty">Nothing posted yet.</p>`}
+  </section>`;
+}
+function newsRow(n){
+  const app = S.apps[n.appID], tint = newsTint(n);
+  const img = n.imageURL ? `<img class="news-swatch" alt="" src="${esc(n.imageURL)}">` : `<span class="news-swatch" style="${tint?`--tint:${tint}`:""}"></span>`;
+  const tags = [n.published===false?'<span class="tag">Draft</span>':"", n.notify?'<span class="tag">Notifies</span>':""].join(" ");
+  return `<li class="${n.published===false?"draft":""}" data-nid="${esc(n.id)}">${img}
+    <div style="min-width:0"><div class="news-title">${esc(n.title)} ${tags}</div>
+      <div class="news-sub">${esc(n.caption)}</div>
+      <div class="v-meta num">${fmtDate(n.date)}${app?` · ${esc(app.name)}`:""}${n.url?` · <a href="${esc(n.url)}" target="_blank" rel="noopener">Link</a>`:""}</div></div>
+    <div class="lockup-actions"><button class="pill" data-nact="edit">Edit</button>
+      <button class="pill" data-nact="toggle">${n.published===false?"Publish":"Hide"}</button>
+      <button class="pill danger" data-nact="delete">Delete</button></div></li>`;
+}
+function newsBody(){
+  const f = collect($("#newsForm"));
+  f.date = f.date ? new Date(f.date).toISOString() : "";
+  return f;
+}
+function renderNewsPreview(){
+  const f = collect($("#newsForm")), app = S.apps[f.appID];
+  const tint = newsTint(f);
+  const when = f.date ? new Date(f.date) : new Date();
+  $("#newsPreview").innerHTML = `<div class="news-card" style="${tint?`--tint:${tint}`:""}">
+    <div class="body"><h3>${esc(f.title||"Title")}</h3><p>${esc(f.caption||"Caption")}</p>
+      <div class="meta"><span>${esc(app?app.name:S.source.name)}</span><span>${when.toLocaleDateString(undefined,{month:"short",day:"numeric"})}</span></div></div>
+    ${f.imageURL?`<img alt="" src="${esc(f.imageURL)}">`:""}</div>`;
+}
+function wireNews(){
+  const form = $("#newsForm");
+  renderNewsPreview();
+  form.addEventListener("input", renderNewsPreview);
+  form.addEventListener("change", renderNewsPreview);
+  // the color picker and the text field stay in step; empty text means "use the app's color"
+  const picker = $("#newsColor"), text = $('[data-f="tintColor"]', form);
+  picker.oninput = () => { text.value = picker.value.toUpperCase(); renderNewsPreview() };
+  text.addEventListener("input", () => { if(/^#?[0-9a-f]{6}$/i.test(text.value)) picker.value = "#"+text.value.replace("#","") });
+  $("#newsImage").onchange = async e => {
+    const f = e.target.files[0]; if(!f) return;
+    const btn = e.target.closest(".upbtn"); btn.classList.add("disabled");
+    try{ const r = await uploadWithProgress("/api/news/image", f, null); $('[data-f="imageURL"]', form).value = r.url; renderNewsPreview(); toast("Image uploaded") }
+    catch(err){ toast(err.message, true) }
+    btn.classList.remove("disabled"); e.target.value = "";
+  };
+  $$("[data-nact]").forEach(btn=>btn.onclick=async()=>{
+    const id = btn.closest("li").dataset.nid, n = S.news.find(x=>x.id===id), act = btn.dataset.nact;
+    try{
+      if(act==="edit"){ editingNews = id; render(); window.scrollTo({top:0, behavior:"smooth"}); return }
+      if(act==="toggle"){ await api(`/api/news/${id}`, {method:"PUT", body: JSON.stringify({published: n.published===false})}); toast(n.published===false?"Published":"Hidden from the source") }
+      if(act==="delete"){ if(!confirm(`Delete "${n.title}"? It disappears from the source the next time store apps refresh.`)) return;
+        await api(`/api/news/${id}`, {method:"DELETE"}); if(editingNews===id) editingNews = null; toast("Deleted") }
+    }catch(e){ toast(e.message, true) }
+    load();
+  });
+}
+
 function sourceView(){
   const s = S.source, url = sourceLink();
   return `<div class="page-top"><div><p class="eyebrow">Manage</p><h1 class="large-title">Source</h1></div></div>
@@ -875,6 +995,7 @@ function wire(){
     load();
   });
   if(view==="new") wireDrop(v => { load().then(()=>setView("app:"+v.bundleIdentifier)); return true });
+  if(view==="news") wireNews();
 
   $$("[data-act]").forEach(btn=>btn.onclick=async()=>{
     const act = btn.dataset.act; btn.disabled = true;
@@ -901,11 +1022,28 @@ function wire(){
         const a = await api("/api/apps", {method:"POST", body: JSON.stringify(collect($("#newApp")))});
         toast(`Added ${a.name}`); await load(); return setView("app:"+a.bundleIdentifier);
       }
+      if(act==="newNews"){ editingNews = null; btn.disabled = false; return render() }
+      if(act==="saveNews"){
+        const body = newsBody();
+        if(editingNews){ await api(`/api/news/${editingNews}`, {method:"PUT", body: JSON.stringify(body)}); toast("Saved") }
+        else { await api("/api/news", {method:"POST", body: JSON.stringify(body)}); toast(body.published===false?"Saved as a draft":"Posted to the source") }
+        editingNews = null;
+      }
       if(act==="saveSource"){ await api("/api/source", {method:"PUT", body: JSON.stringify(collect($("#sourceForm")))}); toast("Source saved") }
     }catch(e){ toast(e.message,true); btn.disabled = false; return }
     btn.disabled = false; load();
   });
 }
+
+/* "Try again": a new run with the failed build's inputs. Delegated, so it works on any page. */
+document.addEventListener("click", async e => {
+  const btn = e.target.closest("[data-rerun]"); if(!btn) return;
+  e.preventDefault(); e.stopPropagation();
+  btn.disabled = true;
+  try{ await api(`/api/builds/${btn.dataset.rerun}/rerun`, {method:"POST"}); toast("Started a new run on GitHub") }
+  catch(err){ toast(err.message, true) }
+  btn.disabled = false; load();
+});
 
 /* parts that refresh while a build runs, without touching the forms */
 function wireLive(){
