@@ -1,4 +1,4 @@
-"""Run a fork's IPA workflow on GitHub Actions, wait for it, import the result."""
+"""Run a build repo's IPA workflow on GitHub Actions, wait for it, import the result."""
 import asyncio
 import datetime as dt
 import logging
@@ -36,9 +36,9 @@ def friendly(e: Exception) -> str:
         if code == 401:
             return "GitHub rejected the token. Check GITHUB_TOKEN on the container and restart it."
         if code == 403:
-            return "The token can't do this. It needs Actions read and write access on your fork."
+            return "The token can't do this. It needs Actions read and write access on the build repo."
         if code == 404:
-            return "GitHub can't find the fork, workflow file or run. Check the fork name and that the token covers that repo."
+            return "GitHub can't find the build repo, workflow file or run. Check the repo name and that the token covers that repo."
         return f"GitHub returned an error ({code})."
     if isinstance(e, httpx.TransportError):
         return "Couldn't reach GitHub from the server. It will need network access to api.github.com."
