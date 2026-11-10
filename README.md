@@ -49,11 +49,13 @@ uses the same `.env` and stores data in `./data`.
 Compose Up builds the image. To bring your test data along, copy the Mac's
 `data` folder to `/mnt/user/appdata/sidestash`, then update `PUBLIC_URL`.
 
-**Or a regular Unraid container:** push this folder to a GitHub repo; the
-included workflow publishes `ghcr.io/<you>/sidestash:latest` (make the package
-public, or log Unraid into GHCR). Add a container with that image, port
-8686 → anything, path `/data` → `/mnt/user/appdata/sidestash`, and the
-variables below.
+**Or the Unraid template:** the included workflow publishes
+`ghcr.io/<you>/sidestash:latest` on every push to `main` (make the package
+public, or log Unraid into GHCR). Copy [`unraid/sidestash.xml`](unraid/sidestash.xml)
+to `/boot/config/plugins/dockerMan/templates-user/my-sidestash.xml`, then
+Docker › Add Container › Template: sidestash. It maps port 8686, `/data` to
+`/mnt/user/appdata/sidestash`, and has a field for each variable below. In a fork,
+change the image name and the URLs in it to your own.
 
 | Variable | What it's for |
 |---|---|

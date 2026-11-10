@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!--
+  Unraid container template for Sidestash.
+  Add it from the Docker tab: Add Container > Template repositories, or copy this file to
+  /boot/config/plugins/dockerMan/templates-user/my-sidestash.xml and pick "sidestash".
+  The image is built by GitHub Actions on every push to main and published to GHCR;
+  make the package public (or log Unraid into ghcr.io) so Unraid can pull it.
+-->
+<Container version="2">
+  <Name>sidestash</Name>
+  <Repository>ghcr.io/seahdev/sidestash:latest</Repository>
+  <Registry>https://github.com/SeahDev/sidestash/pkgs/container/sidestash</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/SeahDev/sidestash/issues</Support>
+  <Project>https://github.com/SeahDev/sidestash</Project>
+  <Overview>Your own AltStore source, with a dashboard to run it. Upload an .ipa or build one in your fork on GitHub Actions; Sidestash reads its version and permissions, adds the release notes from GitHub and the App Store, and publishes it to /source.json for AltStore and other store apps.&#xD;
+&#xD;
+It also watches the original repos for new releases and can sync your forks. The dashboard is at /admin and needs the admin password. IPAs, icons and settings are kept in the Data folder.</Overview>
+  <Category>Tools: Other:</Category>
+  <WebUI>http://[IP]:[PORT:8686]/admin</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/SeahDev/sidestash/main/unraid/sidestash.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/SeahDev/sidestash/main/unraid/icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <Requires>Expose only the public paths (/, /source.json, /apps.json, /ipa/, /icons/, /fonts/, and /base/ if you upload IPAs for builds); keep /admin on your LAN or Tailscale. The app runs as PUID:PGID (99:100 by default) and fixes the Data folder's ownership on start.</Requires>
+  <Config Name="WebUI Port" Target="8686" Default="8686" Mode="tcp" Description="Port for the source and the dashboard." Type="Port" Display="always" Required="true" Mask="false">8686</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/sidestash" Mode="rw" Description="Where IPAs, icons, uploads and settings are saved. Keep this mapped so they survive restarts and updates." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/sidestash</Config>
+  <Config Name="Public URL" Target="PUBLIC_URL" Default="" Mode="" Description="The address phones reach the source at, e.g. https://apps.example.com. Download links are built from it. Leave empty to use whatever address each request came in on." Type="Variable" Display="always" Required="false" Mask="false"></Config>
+  <Config Name="Admin user" Target="ADMIN_USER" Default="admin" Mode="" Description="Username for the dashboard." Type="Variable" Display="always" Required="true" Mask="false">admin</Config>
+  <Config Name="Admin password" Target="ADMIN_PASSWORD" Default="" Mode="" Description="Password for the dashboard. Use something long and random; the dashboard refuses every sign-in while this is empty." Type="Variable" Display="always" Required="true" Mask="true"/>
+  <Config Name="GitHub token" Target="GITHUB_TOKEN" Default="" Mode="" Description="Fine-grained token limited to your forks: Actions read and write, Contents read (read and write, plus Workflows read and write, to use Sync fork). Needed to run builds." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Upload token" Target="ADMIN_TOKEN" Default="" Mode="" Description="Long random string for scripts/upload.sh, to upload IPAs from your Mac without the password." Type="Variable" Display="advanced" Required="false" Mask="true"/>
+  <Config Name="Update check hours" Target="UPDATE_CHECK_HOURS" Default="6" Mode="" Description="Hours between checks of the original repos for releases and your forks for new commits. 0 turns it off." Type="Variable" Display="advanced" Required="false" Mask="false">6</Config>
+  <Config Name="Upload link hours" Target="UPLOAD_LINK_HOURS" Default="6" Mode="" Description="How long the private link to a decrypted IPA uploaded for a build lasts." Type="Variable" Display="advanced" Required="false" Mask="false">6</Config>
+  <Config Name="Upload link downloads" Target="UPLOAD_LINK_DOWNLOADS" Default="5" Mode="" Description="How many times that link can be downloaded before it stops working." Type="Variable" Display="advanced" Required="false" Mask="false">5</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="User id the app runs as and owns the Data folder with." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Group id the app runs as and owns the Data folder with." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+</Container>
