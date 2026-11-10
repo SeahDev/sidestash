@@ -102,17 +102,12 @@ async def retry_build(build_id: str) -> dict:
         raise BuildError("That build isn't in the history any more.")
     if old["status"] != "failed":
         raise BuildError("Only a failed build can be tried again.")
-    held = old.get("held_uploads") or []
+    inputs = old.get("inputs") or {}
     try:
-        inputs = uploads.relink(old.get("inputs") or {}, held)
+        uploads.check_links(inputs.values())
     except LookupError as e:
         raise BuildError(str(e))
-    build = await start_build(old["bundleIdentifier"], inputs)
-    if held:
-        # The new build owns the files now: it deletes or holds them when it finishes.
-        old.pop("held_uploads", None)
-        store.save()
-    return build
+    return await start_build(old["bundleIdentifier"], inputs)
 
 
 def watch(build: dict):
@@ -156,11 +151,7 @@ async def _watch(build: dict):
                     elif run["conclusion"] != "success":
                         _set(build, status="failed", conclusion=run["conclusion"],
                              error=f"Workflow finished with '{run['conclusion']}'. Open the run on GitHub for the log.")
-                        # The run is over and its log may show the upload link: retire the
-                        # link, but keep the file a few hours in case you try again.
-                        held = uploads.hold_linked((build.get("inputs") or {}).values())
-                        if held:
-                            _set(build, held_uploads=held)
+                        # Keep the uploaded IPA so you can try again; it expires on its own.
                         return
                     else:
                         _set(build, status="importing", conclusion="success")

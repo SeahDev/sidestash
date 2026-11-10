@@ -3,10 +3,11 @@
 These are inputs to a build, never part of the source. Forks of public repos
 have public Actions logs, and workflows often print their inputs, so treat a
 link as visible to anyone once a build has used it. To keep that window small,
-each upload is deleted as soon as the GitHub run that used it finishes
-(whether it worked or not), after MAX_DOWNLOADS downloads, or after MAX_AGE,
-whichever comes first.
+each upload is deleted once a build that used it works, or after MAX_AGE.
+A failed run leaves it in place so you can try again. MAX_DOWNLOADS caps how
+many times the link can be fetched meanwhile.
 """
+import asyncio
 import ipaddress
 import os
 import re
@@ -19,7 +20,7 @@ from .store import DATA_DIR, new_id, now_iso, store
 
 UPLOAD_DIR = DATA_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-MAX_AGE = float(os.environ.get("UPLOAD_LINK_HOURS", "6") or 6) * 3600
+MAX_AGE = float(os.environ.get("UPLOAD_LINK_HOURS", "3") or 3) * 3600
 MAX_DOWNLOADS = int(os.environ.get("UPLOAD_LINK_DOWNLOADS", "5") or 5)
 LINK = re.compile(r"/base/([A-Za-z0-9_-]{20,})/")
 
@@ -78,30 +79,18 @@ def remove_linked(values) -> None:
         remove(u["id"])
 
 
-def hold_linked(values) -> list[dict]:
-    """A failed run: the links in its inputs may be in a public log, so give each file a
-    new secret link and keep it for "Try again". Returns [{id, token}] with the old tokens."""
-    tokens = {m.group(1) for v in values for m in LINK.finditer(str(v))}
-    held = []
-    for u in [u for u in _list() if u["token"] in tokens]:
-        held.append({"id": u["id"], "token": u["token"]})
-        u["token"] = secrets.token_urlsafe(24)
-        u["downloads"] = 0
-    if held:
-        store.save()
-    return held
+def check_links(values) -> None:
+    """Raise LookupError if these build inputs point to an upload that's gone."""
+    live = {u["token"] for u in _list() if time.time() - u.get("added_ts", 0) <= MAX_AGE}
+    if any(m.group(1) not in live for v in values for m in LINK.finditer(str(v))):
+        raise LookupError("The IPA you uploaded for this build has been deleted. Upload it again and start a new build.")
 
 
-def relink(values: dict, held: list[dict]) -> dict:
-    """Swap each held file's old link in these inputs for its current one.
-    Raises LookupError if a file has expired since."""
-    out = dict(values)
-    for h in held:
-        u = next((u for u in _list() if u["id"] == h["id"]), None)
-        if not u or time.time() - u.get("added_ts", 0) > MAX_AGE:
-            raise LookupError("The IPA you uploaded for this build has expired. Upload it again and start a new build.")
-        out = {k: str(v).replace(f"/base/{h['token']}/", f"/base/{u['token']}/") for k, v in out.items()}
-    return out
+async def prune_loop() -> None:
+    """Delete expired uploads as they expire, not only at startup."""
+    while True:
+        await asyncio.sleep(300)
+        prune()
 
 
 def prune() -> None:

@@ -64,7 +64,7 @@ change the image name and the URLs in it to your own.
 | `ADMIN_TOKEN` | Optional. Long random string for `scripts/upload.sh`. |
 | `PORT` | Port the server listens on inside the container (default `8686`). Only matters with host or custom networking. |
 | `GITHUB_TOKEN` | Fine-grained token limited to **Only select repositories** (your forks): **Actions: read and write** and **Contents: read**. Only if you use Sync fork, raise **Contents** to read and write and add **Workflows: read and write**. Give it nothing else. Also lifts the API rate limit for changelogs. |
-| `UPLOAD_LINK_HOURS` / `UPLOAD_LINK_DOWNLOADS` | Lifetime of the private links for decrypted IPAs you upload for builds (default 6 hours, 5 downloads). |
+| `UPLOAD_LINK_HOURS` / `UPLOAD_LINK_DOWNLOADS` | Lifetime of the private links for decrypted IPAs you upload for builds (default 3 hours, 5 downloads). |
 | `PUID` / `PGID` | Docker only: the user the server runs as (default `99`/`100`, Unraid's nobody:users). It never runs as root. |
 | `UPDATE_CHECK_HOURS` | How often to check the original repos for releases and your forks for new commits (default `6`; `0` turns it off). |
 
@@ -155,9 +155,9 @@ release.
   send on their own.
 - **Upload links are short-lived.** Public forks have public Actions logs, and
   workflows often print their inputs, so the private link to a decrypted IPA
-  may be seen by others. Each one is deleted when the run that used it
-  finishes, after `UPLOAD_LINK_DOWNLOADS` downloads, or after
-  `UPLOAD_LINK_HOURS`, whichever is first.
+  may be seen by others. Each one is deleted when a build that used it
+  works, or after `UPLOAD_LINK_HOURS`, whichever is first; a failed run keeps
+  it so you can try again. It stops downloading after `UPLOAD_LINK_DOWNLOADS`.
 - **The container doesn't run as root.** It fixes ownership of `/data`, then
   drops to `PUID`:`PGID`.
 
@@ -175,7 +175,7 @@ release.
   currently live in the App Store. "Re-pull changelogs" on a version refetches both.
 - **Everything in the source is public** to anyone with the URL, including the
   modified IPAs. Decrypted IPAs you upload for builds are never listed: each
-  has a long random link and is deleted when the run that used it finishes, or
+  has a long random link and is deleted when a build that used it works, or
   after `UPLOAD_LINK_HOURS`.
 - **Not affiliated** with Apple, AltStore, or the authors of any tweak or app
   you use it with.

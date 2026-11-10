@@ -33,9 +33,10 @@ async def lifespan(_app):
     store.migrate()
     uploads.prune()
     builds.resume_unfinished()
-    checker = asyncio.create_task(upstream.loop())
+    tasks = [asyncio.create_task(upstream.loop()), asyncio.create_task(uploads.prune_loop())]
     yield
-    checker.cancel()
+    for t in tasks:
+        t.cancel()
 
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
