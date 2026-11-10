@@ -32,7 +32,8 @@ DEFAULT_APP = {
     "appstore_bundle_id": "",
     "base_app_name": "",
     "tweak_version_regex": r"v?(\d+(?:\.\d+)+)",
-    "build": {"fork_repo": "", "workflow": "", "ref": "main", "inputs": {}},
+    # fork_repo and ref left blank use the default build repo and branch (build_defaults)
+    "build": {"fork_repo": "", "workflow": "", "ref": "", "inputs": {}},
     "appstore": {},
     "order": 0,
 }
@@ -95,9 +96,9 @@ class Store:
     def migrate(self):
         """Bring data saved by older versions up to date. Runs at startup."""
         self.data.setdefault("news", [])
+        changed = self._adopt_build_defaults()
         # Older builds copied the App Store description into the app. Clear any
         # that are still verbatim copies so the tweak description is used.
-        changed = False
         for app in self.data["apps"].values():
             if "featured" not in app:       # before the switch existed, every app was featured
                 app["featured"] = True
@@ -108,6 +109,31 @@ class Store:
                 changed = True
         if changed:
             self.save()
+
+    def _adopt_build_defaults(self) -> bool:
+        """Before there was a default build repo, each app named its own. If two or
+        more apps share a repo and branch, make that the default and clear their copies."""
+        if "build_defaults" in self.data:
+            return False
+        self.data["build_defaults"] = {"repo": "", "ref": "main"}
+        pairs = {}
+        for app in self.data["apps"].values():
+            cfg = app.get("build") or {}
+            if cfg.get("fork_repo"):
+                pairs.setdefault((cfg["fork_repo"], cfg.get("ref") or "main"), []).append(cfg)
+        if pairs:
+            (repo, ref), users = max(pairs.items(), key=lambda kv: len(kv[1]))
+            if len(users) >= 2:
+                self.data["build_defaults"] = {"repo": repo, "ref": ref}
+                for cfg in users:
+                    cfg["fork_repo"], cfg["ref"] = "", ""
+        return True
+
+    def build_target(self, app: dict) -> tuple[str, str]:
+        """(repo, branch) an app builds from: its own if set, else the defaults."""
+        cfg = app.get("build") or {}
+        d = self.data.get("build_defaults") or {}
+        return (cfg.get("fork_repo") or d.get("repo") or ""), (cfg.get("ref") or d.get("ref") or "main")
 
     def versions_for(self, bundle_id: str):
         return [v for v in self.data["versions"] if v["bundleIdentifier"] == bundle_id]

@@ -32,12 +32,15 @@ class ToolsError(Exception):
 
 
 def build_repos() -> list[tuple[str, str]]:
-    """Each (repo, branch) an app builds from, once."""
+    """The default build repo and each (repo, branch) an app builds from, once."""
     seen = {}
+    d = store.data.get("build_defaults") or {}
+    if d.get("repo"):
+        seen[d["repo"].lower()] = (d["repo"], d.get("ref") or "main")
     for app in store.data["apps"].values():
-        cfg = app.get("build") or {}
-        if cfg.get("fork_repo"):
-            seen.setdefault(cfg["fork_repo"].lower(), (cfg["fork_repo"], cfg.get("ref") or "main"))
+        repo, ref = store.build_target(app)
+        if repo:
+            seen.setdefault(repo.lower(), (repo, ref))
     return list(seen.values())
 
 

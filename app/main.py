@@ -409,12 +409,26 @@ async def update_app(bundle_id: str, request: Request):
 
 
 @app.delete("/api/apps/{bundle_id}", dependencies=[admin])
-def delete_app(bundle_id: str):
-    if store.versions_for(bundle_id):
+def delete_app(bundle_id: str, versions: bool = False):
+    """Remove an app. With ?versions=true its versions and their IPAs go too;
+    otherwise an app that still has versions is refused."""
+    if bundle_id not in store.data["apps"]:
+        raise HTTPException(404)
+    if any(b["bundleIdentifier"] == bundle_id and b["status"] not in ("done", "failed") for b in store.data["builds"]):
+        raise HTTPException(400, "A build of this app is still running. Wait for it, or cancel it on GitHub.")
+    mine = store.versions_for(bundle_id)
+    if mine and not versions:
         raise HTTPException(400, "Delete this app's versions first.")
+    for v in mine:
+        (IPA_DIR / v["file"]).unlink(missing_ok=True)
+        store.data["versions"].remove(v)
+    folder = (IPA_DIR / slug(bundle_id)).resolve()
+    if folder.is_relative_to(IPA_DIR.resolve()) and folder.is_dir() and not any(folder.iterdir()):
+        folder.rmdir()
+    store.data["builds"] = [b for b in store.data["builds"] if b["bundleIdentifier"] != bundle_id]
     store.data["apps"].pop(bundle_id, None)
     store.save()
-    return {"ok": True}
+    return {"ok": True, "versions_deleted": len(mine)}
 
 
 @app.post("/api/apps/{bundle_id}/appstore", dependencies=[admin])
@@ -556,6 +570,27 @@ def backup():
                         headers={"Cache-Control": "no-store"}, background=BackgroundTask(out.unlink, missing_ok=True))
 
 
+@app.put("/api/build-defaults", dependencies=[admin])
+async def set_build_defaults(request: Request):
+    """The build repo and branch apps use unless they name their own.
+    "apply_all": true also clears every app's own repo and branch."""
+    body = await request.json()
+    repo = str(body.get("repo", "")).strip().removeprefix("https://github.com/").strip("/")
+    ref = str(body.get("ref", "")).strip() or "main"
+    if repo and not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
+        raise HTTPException(400, "The build repo should look like owner/name.")
+    store.data["build_defaults"] = {"repo": repo, "ref": ref}
+    cleared = 0
+    if body.get("apply_all"):
+        for a in store.data["apps"].values():
+            cfg = a.setdefault("build", {})
+            if cfg.get("fork_repo") or cfg.get("ref"):
+                cfg["fork_repo"], cfg["ref"] = "", ""
+                cleared += 1
+    store.save()
+    return {**store.data["build_defaults"], "cleared": cleared}
+
+
 @app.post("/api/tools/update", dependencies=[admin])
 async def update_tools(request: Request):
     """Move pinned build tools to their latest version (one commit to pins.json).
@@ -588,7 +623,7 @@ async def load_workflow(bundle_id: str):
     if not app_:
         raise HTTPException(404)
     cfg = app_.setdefault("build", {})
-    fork, wf, ref = cfg.get("fork_repo", ""), cfg.get("workflow", ""), cfg.get("ref") or "main"
+    (fork, ref), wf = store.build_target(app_), cfg.get("workflow", "")
     try:
         inputs = await workflow.fetch_inputs(fork, wf, ref)
     except workflow.WorkflowError as e:

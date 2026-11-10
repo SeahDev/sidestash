@@ -526,6 +526,9 @@ function updateReasons(a){
   if(f?.parent && f.behind) out.push(`<span class="update-why">Fork is ${plural(f.behind,"commit")} behind ${esc(f.parent)}${f.compare_url?` · <a href="${esc(f.compare_url)}" target="_blank" rel="noopener">Changes</a>`:""}</span>`);
   return out;
 }
+// An app builds from its own repo and branch if set, else the defaults under Source → Builds.
+const buildRepo = b => (b && b.fork_repo) || S.build_defaults?.repo || "";
+const buildRef = b => (b && b.ref) || S.build_defaults?.ref || "main";
 function cardStatus(a){
   const b = buildsOf(a.bundleIdentifier)[0];
   const log = b?.run_url ? ` · <a href="${esc(b.run_url)}" target="_blank" rel="noopener">Log</a>` : "";
@@ -537,7 +540,7 @@ function cardStatus(a){
 const CHEVRON = '<svg class="chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 function lockup(a, kind){
   const b = a.build || {}, id = a.bundleIdentifier, running = buildsOf(id).some(ACTIVE);
-  const ready = b.fork_repo && b.workflow, v = versionsOf(id)[0];
+  const ready = buildRepo(b) && b.workflow, v = versionsOf(id)[0];
   const key = kind+":"+id, open = ready && openRuns.has(key);
   const sub = v ? [v.tweakVersion ? `${esc(a.name)} ${esc(v.tweakVersion)}` : "", `${esc(a.base_app_name||"Version")} ${esc(v.version)}`].filter(Boolean).join(" · ") : "Nothing published yet";
   const f = a.upstream?.fork;
@@ -555,7 +558,7 @@ function lockup(a, kind){
         ${lines.length?`<div class="lockup-lines" ${kind==="app"?`data-status="${esc(id)}"`:""}>${lines.join("")}</div>`:kind==="app"?`<div class="lockup-lines" data-status="${esc(id)}"></div>`:""}</div>
       <div class="lockup-actions">${buttons}</div></div>
     ${open ? `<div class="runform" data-runform="${esc(id)}">
-        <p class="meta">${esc(b.fork_repo)} · ${esc(b.ref||"main")} · ${esc(b.workflow)}</p>
+        <p class="meta">${esc(buildRepo(b))} · ${esc(buildRef(b))} · ${esc(b.workflow)}</p>
         ${inputsMarkup(a, kind)}
         ${hasUrl && !S.public_reachable ? `<p class="callout">Uploads give GitHub a link on ${esc(S.public_url)}, which it can't reach. Set PUBLIC_URL to your public address, or paste a link from elsewhere.</p>` : ""}
         <div class="form-actions"><button class="pill filled large" data-run="${esc(id)}" ${!S.github_ready||running?"disabled":""}>Start build</button></div>
@@ -581,8 +584,8 @@ function wireHome(){
     load();
   });
   // fetch each app's workflow inputs once, if they aren't known yet
-  Object.values(S.apps).forEach(a=>{ const b = a.build||{}, key = [a.bundleIdentifier,b.fork_repo,b.workflow,b.ref||"main"].join("|");
-    if(b.fork_repo && b.workflow && S.github_ready && !schemaFor(b) && !wfTried.has(key)){ wfTried.add(key); loadWorkflow(a.bundleIdentifier, true) } });
+  Object.values(S.apps).forEach(a=>{ const b = a.build||{}, key = [a.bundleIdentifier,buildRepo(b),b.workflow,buildRef(b)].join("|");
+    if(buildRepo(b) && b.workflow && S.github_ready && !schemaFor(b) && !wfTried.has(key)){ wfTried.add(key); loadWorkflow(a.bundleIdentifier, true) } });
 }
 /* status lines refresh while builds run, without touching open forms */
 function refreshHome(){
@@ -658,7 +661,7 @@ function inputsMarkup(a, kind){
   if(schemaFor(b)) return schemaInputs(b, a, kind);
   const inputs = Object.entries(b.inputs||{});
   const isBool = v => v==="true" || v==="false";
-  if(!inputs.length) return `<p class="empty" style="padding:4px 0">${b.fork_repo&&b.workflow ? (wfErrors[a.bundleIdentifier] ? `<span class="err">${esc(wfErrors[a.bundleIdentifier])}</span>` : "Reading the workflow's inputs…") : "Fill in your fork and workflow file, then save. Its inputs appear here."}</p>`;
+  if(!inputs.length) return `<p class="empty" style="padding:4px 0">${buildRepo(b)&&b.workflow ? (wfErrors[a.bundleIdentifier] ? `<span class="err">${esc(wfErrors[a.bundleIdentifier])}</span>` : "Reading the workflow's inputs…") : buildRepo(b) ? "Fill in the workflow file, then save. Its inputs appear here." : "Set a build repo under Source → Builds (or below), and the workflow file. Its inputs appear here."}</p>`;
   return `<div class="grid">${inputs.map(([k,v])=> isBool(v)
     ? `<label class="field">${esc(k)}<select data-in="${esc(k)}"><option ${v==="true"?"selected":""}>true</option><option ${v==="false"?"selected":""}>false</option></select></label>`
     : /url/i.test(k) ? urlField(k, esc(k), v, "Paste a link or upload the decrypted .ipa")
@@ -677,13 +680,13 @@ function actionsForm(a){
   return `
     <h3 class="group-title">Workflow</h3>
     <div class="grid three">
-      ${field("build.fork_repo","Build repo",b.fork_repo,"you/builds or you/"+(a.github_repo||"repo").split("/").pop())}
       ${field("build.workflow","Workflow file",b.workflow,"build.yml")}
-      ${field("build.ref","Branch",b.ref||"main")}
+      ${field("build.fork_repo","Build repo",b.fork_repo,S.build_defaults?.repo ? "Default: "+S.build_defaults.repo : "you/builds")}
+      ${field("build.ref","Branch",b.ref,"Default: "+(S.build_defaults?.ref||"main"))}
     </div>
-    ${b.fork_repo && a.upstream ? `<div style="margin-top:12px;font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">${forkLine(a)}</div>` : ""}
+    ${buildRepo(b) && a.upstream ? `<div style="margin-top:12px;font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">${forkLine(a)}</div>` : ""}
     <div class="group-sub"><h4>Inputs</h4>
-      ${b.fork_repo&&b.workflow&&S.github_ready?`<button class="text-btn small" data-act="loadWorkflow">Reload from workflow</button>`:""}</div>
+      ${buildRepo(b)&&b.workflow&&S.github_ready?`<button class="text-btn small" data-act="loadWorkflow">Reload from workflow</button>`:""}</div>
     ${inputsMarkup(a)}
     <div class="form-actions">
       <button class="pill filled large" data-act="build" ${!S.github_ready||running?"disabled":""}>${running?"Building…":"Start build"}</button>
@@ -695,7 +698,7 @@ function actionsForm(a){
 /* inputs read from the workflow file itself (POST /api/apps/:id/workflow) */
 const wfErrors = {}, wfTried = new Set();
 const schemaFor = b => { const s = b.schema;
-  return s && s.fork_repo===b.fork_repo && s.workflow===b.workflow && s.ref===(b.ref||"main") ? s : null };
+  return s && s.fork_repo===buildRepo(b) && s.workflow===b.workflow && s.ref===buildRef(b) ? s : null };
 // A workflow input named "ref" picks the upstream version to build. Updating
 // fills in the new release's tag; elsewhere it keeps what you used last.
 const releaseTag = a => { const r = a?.upstream?.release; return r?.newer ? r.tag : "" };
@@ -788,7 +791,11 @@ function listingForm(a){
     <div class="form-actions">
       <button class="pill filled large" data-act="saveListing">Save listing</button>
       <label class="pill large">Upload icon<input type="file" accept="image/*" id="iconFile" hidden></label>
-      ${versionsOf(a.bundleIdentifier).length?"":`<button class="pill large danger" data-act="deleteApp">Remove app</button>`}
+    </div>
+    <div class="group-sub"><h4>Remove app</h4></div>
+    <div class="lockup-row" style="grid-template-columns:minmax(0,1fr) auto;padding-top:4px">
+      <p class="hint" style="margin:0">Takes it out of the dashboard and the source${versionsOf(a.bundleIdentifier).length?`, and deletes its ${plural(versionsOf(a.bundleIdentifier).length,"version")} and their IPAs`:""}. People who installed it keep their copy but stop getting updates.</p>
+      <button class="pill danger" data-act="deleteApp">Remove app</button>
     </div>`;
 }
 /* AltStore only knows a fixed set of categories, so pick from them; blank follows the App Store */
@@ -993,6 +1000,16 @@ function sourceView(){
     </div>
     <div class="form-actions"><button class="pill filled large" data-act="saveSource">Save source</button></div></div>
   </section>
+  <section class="shelf">${shelfHead("Builds", `<span class="note">Where apps' build workflows live</span>`)}
+    <div class="group" id="buildDefaults" style="margin-top:16px">
+      <p class="hint" style="margin:0 0 12px">Apps build from this repo and branch unless their Build tab names another. Each app still picks its own workflow file.</p>
+      <div class="grid">
+        ${field("repo","Build repo",S.build_defaults?.repo,"you/builds")}${field("ref","Branch",S.build_defaults?.ref,"main")}
+        ${(n => n ? `<label class="check wide"><input type="checkbox" data-f="apply_all"> Use it for every app: ${plural(n,"app")} name${n===1?"s":""} a repo or branch of ${n===1?"its":"their"} own, which this clears</label>` : "")(Object.values(S.apps).filter(a=>a.build?.fork_repo||a.build?.ref).length)}
+      </div>
+      <div class="form-actions"><button class="pill filled large" data-act="saveBuildDefaults">Save</button></div>
+    </div>
+  </section>
   <section class="shelf">${shelfHead("Data")}
     <div class="lockup-row" style="grid-template-columns:minmax(0,1fr) auto">
       <div><div class="tool-name">Backup</div>
@@ -1074,14 +1091,14 @@ function wire(){
     icon.onchange = async()=>{ try{ await uploadWithProgress(`/api/apps/${appId}/icon`, icon.files[0]); toast("Icon updated") }catch(e){ toast(e.message,true) } load() };
     wireLive();
     const b = a.build || {};
-    const key = [appId, b.fork_repo, b.workflow, b.ref||"main"].join("|");
-    if(b.fork_repo && b.workflow && S.github_ready && !schemaFor(b) && !wfTried.has(key)){ wfTried.add(key); loadWorkflow(appId, true) }
+    const key = [appId, buildRepo(b), b.workflow, buildRef(b)].join("|");
+    if(buildRepo(b) && b.workflow && S.github_ready && !schemaFor(b) && !wfTried.has(key)){ wfTried.add(key); loadWorkflow(appId, true) }
   }
   if(view==="home") wireHome();
   wireUploads();
   $$("[data-sync]").forEach(btn=>btn.onclick=async()=>{
     const a = S.apps[btn.dataset.sync], f = a.upstream.fork;
-    if(!confirm(`Pull ${plural(f.behind,"commit")} from ${f.parent} into ${a.build.fork_repo} (${f.ref})?\n\nThis changes your fork on GitHub, like its Sync fork button.`)) return;
+    if(!confirm(`Pull ${plural(f.behind,"commit")} from ${f.parent} into ${buildRepo(a.build)} (${f.ref})?\n\nThis changes your fork on GitHub, like its Sync fork button.`)) return;
     btn.disabled = true;
     try{ const r = await api(`/api/apps/${a.bundleIdentifier}/sync`, {method:"POST"}); toast(r.steps.join(" ")) }
     catch(e){ toast(e.message,true) }
@@ -1109,8 +1126,11 @@ function wire(){
       }
       if(act==="saveListing"){ await api(`/api/apps/${appId}`, {method:"PUT", body: JSON.stringify(collect($("#listing")))}); toast("Listing saved") }
       if(act==="appstore"){ const i = await api(`/api/apps/${appId}/appstore`, {method:"POST"}); toast(`App Store: ${i.trackName} ${i.version}`) }
-      if(act==="deleteApp"){ if(!confirm("Remove this app from the dashboard?")) { btn.disabled=false; return }
-        await api(`/api/apps/${appId}`, {method:"DELETE"}); view = "" }
+      if(act==="deleteApp"){
+        const a = S.apps[appId], n = versionsOf(appId).length;
+        if(!confirm(`Remove ${a.name}?\n\nIt leaves the dashboard and the source${n?`, and its ${plural(n,"version")} and their IPAs are deleted`:""}. This can't be undone.`)) { btn.disabled=false; return }
+        const r = await api(`/api/apps/${encodeURIComponent(appId)}?versions=true`, {method:"DELETE"});
+        toast(`Removed ${a.name}${r.versions_deleted?` and ${plural(r.versions_deleted,"version")}`:""}`); setView("home") }
       if(act==="createApp"){
         const a = await api("/api/apps", {method:"POST", body: JSON.stringify(collect($("#newApp")))});
         toast(`Added ${a.name}`); await load(); return setView("app:"+a.bundleIdentifier);
@@ -1122,6 +1142,9 @@ function wire(){
         else { await api("/api/news", {method:"POST", body: JSON.stringify(body)}); toast(body.published===false?"Saved as a draft":"Posted to the source") }
         editingNews = null;
       }
+      if(act==="saveBuildDefaults"){
+        const r = await api("/api/build-defaults", {method:"PUT", body: JSON.stringify(collect($("#buildDefaults")))});
+        toast(r.cleared ? `Saved. ${plural(r.cleared,"app")} now use${r.cleared===1?"s":""} it.` : "Saved") }
       if(act==="saveSource"){ await api("/api/source", {method:"PUT", body: JSON.stringify(collect($("#sourceForm")))}); toast("Source saved") }
     }catch(e){ toast(e.message,true); btn.disabled = false; return }
     btn.disabled = false; load();

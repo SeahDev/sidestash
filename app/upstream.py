@@ -82,15 +82,16 @@ async def _fork_status(c: httpx.AsyncClient, fork: str, ref: str) -> dict:
 
 async def check_app(c: httpx.AsyncClient, app: dict) -> dict:
     out = {"checked": now_iso(), "release": None, "fork": None, "errors": []}
-    repo, cfg = app.get("github_repo"), app.get("build") or {}
-    if cfg.get("fork_repo"):
+    repo = app.get("github_repo")
+    build_repo, build_ref = store.build_target(app)
+    if build_repo:
         try:
-            out["fork"] = await _fork_status(c, cfg["fork_repo"], cfg.get("ref") or "")
+            out["fork"] = await _fork_status(c, build_repo, build_ref)
         except (SyncError, httpx.HTTPError) as e:
             out["errors"].append(f"Fork: {e}")
     # If the "original repo" is really your fork, watch the repo it was forked from.
     parent = (out["fork"] or {}).get("parent")
-    if parent and (not repo or repo.lower() == cfg["fork_repo"].lower()):
+    if parent and (not repo or repo.lower() == build_repo.lower()):
         repo = parent
         out["release_repo"] = parent
     if repo:
@@ -135,12 +136,11 @@ def _sync_error(r: httpx.Response, fork: str, branch: str) -> SyncError:
 
 async def sync_fork(app: dict) -> dict:
     """Bring the build branch up to date with the original, like GitHub's Sync fork button."""
-    cfg = app.get("build") or {}
-    fork = cfg.get("fork_repo")
+    fork, ref = store.build_target(app)
     if not fork:
         raise SyncError("Set your fork first.")
     async with httpx.AsyncClient(timeout=60, headers=gh_headers()) as c:
-        info = await _fork_status(c, fork, cfg.get("ref") or "")
+        info = await _fork_status(c, fork, ref)
         if not info["parent"]:
             raise SyncError(info.get("note", "Not a fork."))
         ref, steps = info["ref"], []
