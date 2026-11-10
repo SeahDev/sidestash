@@ -126,8 +126,18 @@ def source(request: Request):
 
 
 @app.get("/")
-def landing():
-    return FileResponse(STATIC / "index.html")
+def landing(request: Request):
+    """The site root works as the source address too.
+
+    Browsers ask for HTML (their Accept header lists text/html) and get the landing
+    page. Store apps such as AltStore and FlareStore don't (AltStore sends */*), so
+    they get the source JSON, and https://your-host/ can be added directly.
+    """
+    vary = {"Vary": "Accept", "Cache-Control": "no-cache"}   # one URL, two answers: tell caches
+    if "text/html" in request.headers.get("accept", ""):
+        return FileResponse(STATIC / "index.html", headers=vary)
+    return JSONResponse(build_source(store.snapshot(), base_url(request)),
+                        headers={**vary, "Access-Control-Allow-Origin": "*"})
 
 
 @app.get("/ipa/{bundle}/{filename}")
