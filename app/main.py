@@ -322,6 +322,11 @@ def state(request: Request):
     for a in data["apps"].values():
         # what "Automatic" resolves to: the App Store's category, mapped
         a["category_auto"] = app_category({**a, "category": ""})
+        rel = (a.get("upstream") or {}).get("release")
+        if rel:
+            upstream.mark_newer(rel, a["bundleIdentifier"])
+        if a.get("upstream"):
+            a["upstream"]["fork"] = upstream.current_fork(a)
     for u in data.get("uploads", []):
         u["url"] = uploads.link(base, u)
     return data
@@ -403,8 +408,11 @@ async def update_app(bundle_id: str, request: Request):
     if "category" in body:
         # store the id AltStore understands; "" means use the App Store's
         body["category"] = category_id(body["category"])
+    before = store.build_target(app_)
     app_.update({k: v for k, v in body.items() if k in APP_FIELDS})
     store.save()
+    if store.build_target(app_) != before and builds.GITHUB_TOKEN:
+        upstream.refresh_soon()   # the saved fork status was about the old repo
     return app_
 
 
@@ -588,6 +596,8 @@ async def set_build_defaults(request: Request):
                 cfg["fork_repo"], cfg["ref"] = "", ""
                 cleared += 1
     store.save()
+    if builds.GITHUB_TOKEN:
+        upstream.refresh_soon()   # fork status and build tools for the new repo
     return {**store.data["build_defaults"], "cleared": cleared}
 
 

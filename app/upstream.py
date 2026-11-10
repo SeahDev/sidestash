@@ -43,6 +43,39 @@ def _published_tweak(bundle_id: str) -> str:
     return max((v["tweakVersion"] for v in vs), key=vtuple, default="")
 
 
+def current_fork(app: dict) -> dict | None:
+    """The saved fork status, if it's about the repo and branch the app builds from
+    now. One saved before the build repo changed describes the old repo, so it's
+    dropped until the next check."""
+    f = (app.get("upstream") or {}).get("fork")
+    if not f:
+        return None
+    repo, ref = store.build_target(app)
+    if (f.get("repo") or "").lower() != repo.lower() or f.get("ref") not in (ref, None):
+        return None
+    return f
+
+
+def refresh_soon() -> None:
+    """Check every app in the background, e.g. after the build repo changes."""
+    async def run():
+        try:
+            await check_all()
+        except Exception:
+            log.exception("update check failed")
+    asyncio.get_running_loop().create_task(run())
+
+
+def mark_newer(rel: dict, bundle_id: str) -> dict:
+    """Is this release newer than the tweak version you've published? Worked out
+    again whenever the dashboard loads, so publishing a build clears the notice
+    right away instead of at the next update check."""
+    mine = _published_tweak(bundle_id)
+    rel["published_tweak"] = mine
+    rel["newer"] = bool(rel.get("version") and (not mine or vtuple(rel["version"]) > vtuple(mine)))
+    return rel
+
+
 async def _latest_release(c: httpx.AsyncClient, repo: str) -> dict | None:
     r = await c.get(f"{API}/repos/{repo}/releases", params={"per_page": 10})
     if r.status_code == 404:
@@ -64,7 +97,7 @@ async def _fork_status(c: httpx.AsyncClient, fork: str, ref: str) -> dict:
     r.raise_for_status()
     repo = r.json()
     parent = repo.get("parent") or {}
-    info = {"default_branch": repo.get("default_branch", "main"), "ref": ref or repo.get("default_branch", "main"),
+    info = {"repo": fork, "default_branch": repo.get("default_branch", "main"), "ref": ref or repo.get("default_branch", "main"),
             "parent": parent.get("full_name", ""), "parent_branch": "", "behind": None, "ahead": None, "compare_url": ""}
     if not parent:
         info["note"] = "This repo isn't a fork, so there's nothing to sync from."
@@ -98,9 +131,7 @@ async def check_app(c: httpx.AsyncClient, app: dict) -> dict:
         try:
             rel = await _latest_release(c, repo)
             if rel:
-                mine = _published_tweak(app["bundleIdentifier"])
-                rel["published_tweak"] = mine
-                rel["newer"] = bool(rel["version"] and (not mine or vtuple(rel["version"]) > vtuple(mine)))
+                mark_newer(rel, app["bundleIdentifier"])
             out["release"] = rel
         except (SyncError, httpx.HTTPError) as e:
             out["errors"].append(f"Releases: {e}")
