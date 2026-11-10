@@ -65,13 +65,29 @@ li span{display:block;color:var(--text-2);font-size:13px;font-variant-numeric:ta
 </main>
 <script>
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// navigator.clipboard only exists on HTTPS and localhost; over plain HTTP, copy from a hidden field.
+async function copyText(text) {
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch {}
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";
+  document.body.appendChild(ta);
+  ta.select(); ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch {}
+  ta.remove();
+  return ok;
+}
 fetch("/source.json").then(r=>r.json()).then(src=>{
   const url = src.sourceURL;
   document.title = src.name;
   document.getElementById("name").textContent = src.name;
   document.getElementById("sub").textContent = src.subtitle || "";
   document.getElementById("add").href = "altstore://source?url=" + encodeURIComponent(url);
-  document.getElementById("copy").onclick = async e => { await navigator.clipboard.writeText(url); e.target.textContent = "Copied"; };
+  document.getElementById("copy").onclick = async e => {
+    if (await copyText(url)) e.target.textContent = "Copied";
+    else window.prompt("Copy the source link:", url);
+  };
   document.getElementById("apps").innerHTML = src.apps.map(a=>`<li><img alt="" src="${esc(a.iconURL)}">
     <div><strong>${esc(a.name)}</strong><span>${esc(a.subtitle)}</span><span>${[a.versions[0].version, a.developerName].filter(Boolean).map(esc).join(" · ")}</span></div></li>`).join("");
 });

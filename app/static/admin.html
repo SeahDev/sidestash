@@ -319,6 +319,22 @@ const ICONS = {
   source: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16M4 12h16M4 17.5h10"/><circle cx="18" cy="17.5" r="2"/></svg>',
 };
 
+/* Copy to the clipboard. navigator.clipboard only exists on HTTPS pages and localhost,
+   and the dashboard is usually opened over plain HTTP on the LAN, so fall back to
+   copying from a hidden text field. Returns false if neither works. */
+async function copyText(text){
+  try{ if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); return true } }catch{}
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;font-size:16px";  // 16px: no zoom on iOS
+  document.body.appendChild(ta);
+  ta.select(); ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try{ ok = document.execCommand("copy") }catch{}
+  ta.remove();
+  return ok;
+}
+
 function toast(msg, err=false){
   const t = $("#toast"); t.textContent = msg; t.className = "toast show" + (err?" err":"");
   clearTimeout(t._h); t._h = setTimeout(()=>t.className="toast", err?6000:2600);
@@ -819,7 +835,10 @@ function wireUploads(){
 }
 
 function wire(){
-  $$("[data-copy]").forEach(b=>b.onclick=async()=>{ await navigator.clipboard.writeText(b.dataset.copy); toast("Source link copied") });
+  $$("[data-copy]").forEach(b=>b.onclick=async()=>{
+    if(await copyText(b.dataset.copy)) toast("Source link copied");
+    else { window.prompt("Copy the source link:", b.dataset.copy) }
+  });
   $$("#main [data-view]").forEach(el=>el.onclick=e=>{ e.preventDefault(); setView(el.dataset.view) });
   const appId = view.startsWith("app:") ? view.slice(4) : null;
 
