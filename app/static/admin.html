@@ -521,11 +521,12 @@ function lastChecked(){
 function updateReasons(a){
   const out = [], r = a.upstream?.release, f = a.upstream?.fork, st = a.appstore || {}, v = versionsOf(a.bundleIdentifier)[0];
   if(r?.newer) out.push(`<span class="update-why"><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(a.name)} ${esc(r.version||r.tag)}</a> is out</span>`);
-  if(st.version && v && cmpVersion(v, {version: st.version, date: v.date}) > 0)
+  if(!isOwn(a) && st.version && v && cmpVersion(v, {version: st.version, date: v.date}) > 0)
     out.push(`<span class="update-why">${esc(a.base_app_name||"Base app")} ${esc(st.version)} is on the App Store</span>`);
   if(f?.parent && f.behind) out.push(`<span class="update-why">Fork is ${plural(f.behind,"commit")} behind ${esc(f.parent)}${f.compare_url?` · <a href="${esc(f.compare_url)}" target="_blank" rel="noopener">Changes</a>`:""}</span>`);
   return out;
 }
+const isOwn = a => a?.kind === "own";   // an app you made, not a modified App Store app
 // An app builds from its own repo and branch if set, else the defaults under Source → Builds.
 const buildRepo = b => (b && b.fork_repo) || S.build_defaults?.repo || "";
 const buildRef = b => (b && b.ref) || S.build_defaults?.ref || "main";
@@ -542,14 +543,15 @@ function lockup(a, kind){
   const b = a.build || {}, id = a.bundleIdentifier, running = buildsOf(id).some(ACTIVE);
   const ready = buildRepo(b) && b.workflow, v = versionsOf(id)[0];
   const key = kind+":"+id, open = ready && openRuns.has(key);
-  const sub = v ? [v.tweakVersion ? `${esc(a.name)} ${esc(v.tweakVersion)}` : "", `${esc(a.base_app_name||"Version")} ${esc(v.version)}`].filter(Boolean).join(" · ") : "Nothing published yet";
+  const sub = !v ? "Nothing published yet" : isOwn(a) ? `Version ${esc(v.version)}`
+    : [v.tweakVersion ? `${esc(a.name)} ${esc(v.tweakVersion)}` : "", `${esc(a.base_app_name||"Version")} ${esc(v.version)}`].filter(Boolean).join(" · ");
   const f = a.upstream?.fork;
   const lines = kind==="update" ? updateReasons(a) : [cardStatus(a)].filter(Boolean);
   const hasUrl = /data-upfor/.test(inputsMarkup(a));
   const buttons = [
     kind==="update" && f?.behind && S.github_ready ? `<button class="pill" data-sync="${esc(id)}">Sync fork</button>` : "",
     ready ? `<button class="pill" data-toggle-run="${esc(key)}" aria-expanded="${open}" ${running?"disabled":""}>${running?"Building":`${kind==="update"?"Update":"Build"}${CHEVRON}`}</button>`
-          : kind==="app" ? `<button class="pill" data-view="app:${esc(id)}">Set up</button>` : "",
+          : kind==="app" && !isOwn(a) ? `<button class="pill" data-view="app:${esc(id)}">Set up</button>` : "",
   ].join("");
   return `<li class="lockup" data-card="${esc(id)}">
     <div class="lockup-row">${iconImg(iconFor(a),a.name,"icon m")}
@@ -600,7 +602,9 @@ function refreshHome(){
 /* ---------------- app page ---------------- */
 function appView(a){
   const st = a.appstore || {}, id = a.bundleIdentifier, latest = versionsOf(id)[0], b = buildsOf(id)[0];
-  const tab = appTab[id] || "build";
+  // Your own app without a workflow is uploaded by hand: open on its versions.
+  const builds = !isOwn(a) || !!a.build?.workflow;
+  const tab = appTab[id] || (builds ? "build" : "versions");
   const cat = S.categories[chosenCategory(a)] || S.categories[a.category_auto] || "Other";
   const fact = (k,v,s="") => `<div class="fact"><div class="k">${k}</div><div class="v num">${v}</div><div class="s">${s}</div></div>`;
   return `
@@ -612,17 +616,18 @@ function appView(a){
       ${a.subtitle?`<p class="subtitle">${esc(a.subtitle)}</p>`:""}
       ${a.github_repo?`<a class="dev" href="https://github.com/${esc(a.github_repo)}" target="_blank" rel="noopener">${esc(a.developerName||a.github_repo)}</a>`:a.developerName?`<span class="dev muted">${esc(a.developerName)}</span>`:""}
       <div class="actions">
-        <button class="pill filled large" data-seg="build" data-focus-run>Run build</button>
-        <button class="pill large" data-act="appstore">Refresh App Store info</button>
+        ${builds ? `<button class="pill filled large" data-seg="build" data-focus-run>Run build</button>`
+          : `<button class="pill filled large" data-seg="versions">Upload a version</button>`}
+        ${isOwn(a) ? "" : `<button class="pill large" data-act="appstore">Refresh App Store info</button>`}
       </div>
     </div>
   </header>
   <div class="facts">
-    ${fact("Version", latest?esc(latest.version):"—", latest?.tweakVersion?`${esc(a.name)} ${esc(latest.tweakVersion)}`:"")}
+    ${fact("Version", latest?esc(latest.version):"—", latest?.tweakVersion && !isOwn(a)?`${esc(a.name)} ${esc(latest.tweakVersion)}`:"")}
     ${fact("Size", latest?fmtSize(latest.size):"—")}
     ${fact("Category", esc(cat))}
     ${fact("Requires", latest?.minOSVersion?`iOS ${esc(latest.minOSVersion)}`:"—", latest?.minOSVersion?"or later":"")}
-    ${fact("App Store", st.version?esc(st.version):"—", esc(a.base_app_name||st.trackName||""))}
+    ${isOwn(a) ? fact("Type", "Your app", "") : fact("App Store", st.version?esc(st.version):"—", esc(a.base_app_name||st.trackName||""))}
     ${fact("Last build", b?(b.status==="done"?"Published":b.status==="failed"?"Failed":"Running"):"—", b?fmtDay(b.started):"")}
   </div>
   <div class="segmented" role="tablist">
@@ -769,25 +774,31 @@ function runsPanel(a){
 
 /* ---------------- listing editor + preview ---------------- */
 function listingForm(a){
+  const own = isOwn(a);
   return `<h3 class="group-title">Store listing</h3>
     <div class="grid">
+      <label class="field wide">Type<select data-f="kind" data-kind-picker>
+        <option value="tweak" ${own?"":"selected"}>Tweaked app: a modified App Store app</option>
+        <option value="own" ${own?"selected":""}>My own app</option></select></label>
       ${field("name","Name",a.name)}${field("developerName","Developer",a.developerName)}
       ${field("subtitle","Subtitle",a.subtitle,"","wide")}
       ${field("tintColor","Tint color",a.tintColor,"#3A6EA5")}${categoryField(a)}
-      ${field("iconURL","Icon URL",a.iconURL,"Blank uses the App Store icon","wide")}
+      ${field("iconURL","Icon URL",a.iconURL,own?"Or upload one below":"Blank uses the App Store icon","wide")}
       <label class="field wide">Description<textarea data-f="localizedDescription" style="min-height:150px" placeholder="Blank writes one from the subtitle and repo">${esc(a.localizedDescription)}</textarea></label>
       <label class="field wide">Screenshot links, one per line<textarea data-f="screenshots" autocapitalize="off">${esc((a.screenshots||[]).join("\n"))}</textarea></label>
-      <label class="check wide"><input type="checkbox" data-f="use_appstore_screenshots" ${a.use_appstore_screenshots?"checked":""}> Use the App Store screenshots when the list above is empty</label>
+      <label class="check wide" data-tweak-only ${own?"hidden":""}><input type="checkbox" data-f="use_appstore_screenshots" ${a.use_appstore_screenshots?"checked":""}> Use the App Store screenshots when the list above is empty</label>
       <label class="check wide"><input type="checkbox" data-f="featured" ${a.featured!==false?"checked":""}> Featured (shown at the top of the source in AltStore)</label>
     </div>
     <div class="group-sub"><h4>Changelogs</h4></div>
     <div class="grid">
-      ${field("github_repo","Original repo",a.github_repo,"owner/name")}
-      ${field("base_app_name","Base app name",a.base_app_name,"YouTube")}
-      ${field("appstore_bundle_id","App Store bundle ID",a.appstore_bundle_id)}
-      ${field("tweak_version_regex","Tweak version pattern",a.tweak_version_regex)}
+      ${field("github_repo",own?"GitHub repo (optional)":"Original repo",a.github_repo,"owner/name")}
+      <div data-tweak-only ${own?"hidden":""} style="display:contents">
+        ${field("base_app_name","Base app name",a.base_app_name,"YouTube")}
+        ${field("appstore_bundle_id","App Store bundle ID",a.appstore_bundle_id)}
+      </div>
     </div>
-    <p class="hint">The tweak version is read from the .ipa file name with this pattern, then matched to a release of the original repo.</p>
+    <p class="hint" data-tweak-only ${own?"hidden":""}>The tweak version is read from the .ipa file name (<span class="mono">Sparkle_1.6.1_Instagram_454.1.0.ipa</span> gives 1.6.1), then matched to a release of the original repo. For an .ipa named differently, set it under Versions → Edit.</p>
+    <p class="hint" data-own-only ${own?"":"hidden"}>Release notes come from the repo's release matching each version, and a newer release there shows under Updates. Leave it blank for no notices.</p>
     <div class="form-actions">
       <button class="pill filled large" data-act="saveListing">Save listing</button>
       <label class="pill large">Upload icon<input type="file" accept="image/*" id="iconFile" hidden></label>
@@ -853,19 +864,22 @@ function versionsList(a){
 function newAppView(){
   return `<div class="page-top"><div><p class="eyebrow">Manage</p><h1 class="large-title">Add app</h1></div></div>
   <section class="shelf">${shelfHead("Upload its .ipa", `<span class="note">Fastest</span>`)}
-    <p class="hint">The app is created from the file's bundle ID, name and version. Any tweaked .ipa works.</p>
+    <p class="hint">The app is created from the file's bundle ID, name and version: a tweaked app, or your own (a bundle ID the App Store doesn't list is set up as your own app).</p>
     <label class="drop" id="drop" tabindex="0"><input type="file" accept=".ipa" id="ipaFile" hidden>
       <strong>Drop an .ipa here</strong><span>or choose a file</span>
       <div class="progress" id="prog"><i></i></div></label>
   </section>
   <section class="shelf">${shelfHead("Or set it up first")}
-    <p class="hint">For an app you'll build on GitHub. You add your fork and workflow on its page.</p>
+    <p class="hint">For an app you'll build on GitHub, or upload later. You pick its workflow on its page.</p>
     <div class="group" id="newApp" style="margin-top:16px">
       <div class="grid">
-        ${field("bundleIdentifier","Bundle ID of the base app","","com.example.app")}
-        ${field("name","Name","","Tweak name")}
-        ${field("github_repo","Original repo, for changelogs","","owner/repo")}
-        ${field("base_app_name","Base app name","","YouTube")}
+        <label class="field wide">Type<select data-f="kind" data-kind-picker>
+          <option value="tweak">Tweaked app: a modified App Store app</option>
+          <option value="own">My own app</option></select></label>
+        ${field("bundleIdentifier","Bundle ID","","com.example.app")}
+        ${field("name","Name","","App name")}
+        ${field("github_repo","GitHub repo, for release notes","","owner/repo")}
+        <div data-tweak-only style="display:contents">${field("base_app_name","Base app name","","YouTube")}</div>
       </div>
       <div class="form-actions"><button class="pill filled large" data-act="createApp">Add app</button></div>
     </div>
@@ -877,7 +891,9 @@ function wireDrop(onDone){
   zone.onkeydown = e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); input.click() } };
   const handle = async f => {
     try{ const v = await uploadWithProgress("/api/upload", f);
-      toast(v.duplicate ? "That exact file is already published." : `Published ${v.version}`);
+      toast(v.duplicate ? "That exact file is already published."
+        : v.tweakVersion ? `Published ${v.version} (tweak ${v.tweakVersion})`
+        : `Published ${v.version}. The file name didn't include a tweak version; add it under Versions → Edit.`);
       if(onDone(v)) return; }
     catch(e){ toast(e.message,true) } load();
   };
@@ -1124,7 +1140,10 @@ function wire(){
         await api(`/api/apps/${appId}/build`, {method:"POST", body: JSON.stringify({inputs})});
         toast("Build started on GitHub");
       }
-      if(act==="saveListing"){ await api(`/api/apps/${appId}`, {method:"PUT", body: JSON.stringify(collect($("#listing")))}); toast("Listing saved") }
+      if(act==="saveListing"){
+        const body = collect($("#listing")), was = S.apps[appId].kind || "tweak";
+        await api(`/api/apps/${appId}`, {method:"PUT", body: JSON.stringify(body)});
+        toast(body.kind && body.kind !== was ? (body.kind==="own" ? "Now your own app. Version notes rewritten." : "Now a tweaked app. Version notes rewritten.") : "Listing saved") }
       if(act==="appstore"){ const i = await api(`/api/apps/${appId}/appstore`, {method:"POST"}); toast(`App Store: ${i.trackName} ${i.version}`) }
       if(act==="deleteApp"){
         const a = S.apps[appId], n = versionsOf(appId).length;
@@ -1159,6 +1178,13 @@ document.addEventListener("click", async e => {
   try{ await api(`/api/builds/${btn.dataset.rerun}/rerun`, {method:"POST"}); toast("Started a new run on GitHub") }
   catch(err){ toast(err.message, true) }
   btn.disabled = false; load();
+});
+
+document.addEventListener("change", e => {
+  const pick = e.target.closest("[data-kind-picker]"); if(!pick) return;
+  const own = pick.value === "own", form = pick.closest(".group") || document;
+  $$("[data-tweak-only]", form).forEach(el => el.hidden = own);
+  $$("[data-own-only]", form).forEach(el => el.hidden = !own);
 });
 
 /* parts that refresh while a build runs, without touching the forms */

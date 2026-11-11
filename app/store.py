@@ -28,10 +28,12 @@ DEFAULT_APP = {
     "screenshots": [],
     "use_appstore_screenshots": True,
     "featured": True,                   # listed in the source's featuredApps
+    # "tweak": a modified App Store app (tweak version, base app, App Store info).
+    # "own": an app you made; its releases are compared with the app's own version.
+    "kind": "tweak",
     "github_repo": "",
     "appstore_bundle_id": "",
     "base_app_name": "",
-    "tweak_version_regex": r"v?(\d+(?:\.\d+)+)",
     # fork_repo and ref left blank use the default build repo and branch (build_defaults)
     "build": {"fork_repo": "", "workflow": "", "ref": "", "inputs": {}},
     "appstore": {},
@@ -100,6 +102,11 @@ class Store:
         # Older builds copied the App Store description into the app. Clear any
         # that are still verbatim copies so the tweak description is used.
         for app in self.data["apps"].values():
+            if app.pop("tweak_version_regex", None) is not None:   # replaced by the standard file name
+                changed = True
+            if "kind" not in app:           # every app before this was a tweak
+                app["kind"] = "tweak"
+                changed = True
             if "featured" not in app:       # before the switch existed, every app was featured
                 app["featured"] = True
                 changed = True

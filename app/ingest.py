@@ -14,13 +14,30 @@ def slug(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "-", s).strip("-") or "app"
 
 
-def tweak_version_from(app: dict, filename: str) -> str:
-    pattern = app.get("tweak_version_regex") or ""
-    try:
-        m = re.search(pattern, filename) if pattern else None
-    except re.error:
-        m = None
-    return m.group(1) if m and m.groups() else ""
+# The naming scheme builds use and Sidestash publishes under:
+#   <Tweak>_<tweak version>_<App>_<app version>[_<variant>].ipa
+#   e.g. Sparkle_1.6.1_Instagram_454.1.0.ipa, YTKACE_1.1.5_YouTube_21.33.6_iOS16.ipa
+# Published copies add _<8 hex hash> at the end, which is never a variant.
+NAME_SCHEME = re.compile(
+    r"^(?P<tweak>[^_/]+)_v?(?P<tweak_version>\d+(?:\.\d+)*)_(?P<app>[^_/]+)_v?(?P<app_version>\d+(?:\.\d+)*)"
+    r"(?:_(?!(?:[0-9a-f]{8})\.t?ipa$)(?P<variant>[A-Za-z0-9.-]+?))?(?:_[0-9a-f]{8})?\.t?ipa$")
+
+
+def parse_name(filename: str) -> dict | None:
+    m = NAME_SCHEME.match(Path(filename).name)
+    return m.groupdict() if m else None
+
+
+def tweak_version_from(filename: str) -> str:
+    """The tweak version in a standard file name, or "" for any other name
+    (set it by hand under Versions → Edit)."""
+    parsed = parse_name(filename)
+    return parsed["tweak_version"] if parsed else ""
+
+
+def is_own(app: dict) -> bool:
+    """An app you made, not a modified App Store app."""
+    return app.get("kind") == "own"
 
 
 async def refresh_appstore(app: dict) -> dict:
@@ -45,19 +62,35 @@ def same_version(a: str, b: str) -> bool:
 
 
 async def enrich_version(app: dict, v: dict) -> None:
+    own = is_own(app)
+
+    async def no_appstore():
+        return None
+    # Your own app: its GitHub release is matched by the app's version, and
+    # there's no App Store listing to look up.
     rel, info = await asyncio.gather(
-        enrich.github_release(app.get("github_repo", ""), v.get("tweakVersion")),
-        refresh_appstore(app),
+        enrich.github_release(app.get("github_repo", ""), v["version"] if own else v.get("tweakVersion")),
+        no_appstore() if own else refresh_appstore(app),
         return_exceptions=True,
     )
     v["github_release"] = rel if isinstance(rel, dict) else None
     # App Store notes describe the *current* store version, so only attach them
-    # when this IPA is built on that exact version.
-    if isinstance(info, dict) and same_version(info.get("version", ""), v["version"]):
+    # when this IPA is built on that exact version. Your own app has none.
+    if own:
+        v["appstore_notes"] = None
+    elif isinstance(info, dict) and same_version(info.get("version", ""), v["version"]):
         v["appstore_notes"] = {"version": info["version"], "releaseNotes": info.get("releaseNotes", "")}
     else:
         v.setdefault("appstore_notes", None)
     v["localizedDescription"] = enrich.compose_notes(app, v)
+
+
+def published_name(app: dict, version: str, tweak_version: str, variant: str | None, sha: str) -> str:
+    """<Tweak>_<tweak version>_<App>_<app version>[_<variant>]_<hash>.ipa. The hash
+    keeps every published file name unique, so caches can keep files for good."""
+    base = app.get("base_app_name") or (app.get("appstore") or {}).get("trackName", "")
+    parts = [app["name"], tweak_version, base, version, variant or ""]
+    return "_".join(slug(p).replace("_", "-") for p in parts if p) + f"_{sha[:8]}.ipa"
 
 
 async def ingest(tmp_path: Path, original_name: str, custom_notes: str = "", origin: str = "upload") -> dict:
@@ -71,10 +104,17 @@ async def ingest(tmp_path: Path, original_name: str, custom_notes: str = "", ori
         tmp_path.unlink(missing_ok=True)
         return {**existing, "duplicate": True}
 
+    created = meta["bundleIdentifier"] not in store.data["apps"]
     app = store.ensure_app(meta["bundleIdentifier"], meta["name"])
+    if created and await enrich.appstore_listed(meta["bundleIdentifier"]) is False:
+        # A new bundle ID the App Store says it doesn't have is an app you made.
+        # (If the App Store couldn't be asked, it stays a tweak; change it on the Listing tab.)
+        app["kind"] = "own"
+        store.save()
     dest_dir = IPA_DIR / slug(app["bundleIdentifier"])
     dest_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{slug(app['name'])}_{slug(meta['version'])}_{sha[:8]}.ipa"
+    tweak_version = "" if is_own(app) else tweak_version_from(original_name)
+    filename = published_name(app, meta["version"], tweak_version, (parse_name(original_name) or {}).get("variant"), sha)
     await asyncio.to_thread(shutil.move, str(tmp_path), dest_dir / filename)
 
     v = {
@@ -83,7 +123,7 @@ async def ingest(tmp_path: Path, original_name: str, custom_notes: str = "", ori
         "version": meta["version"],
         "buildVersion": meta["buildVersion"],
         "minOSVersion": meta["minOSVersion"],
-        "tweakVersion": tweak_version_from(app, original_name),
+        "tweakVersion": tweak_version,
         "date": now_iso(),
         "size": os.path.getsize(dest_dir / filename),
         "sha256": sha,

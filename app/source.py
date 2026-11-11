@@ -63,7 +63,7 @@ def default_description(app: dict, latest: dict) -> str:
     lines = []
     if app.get("subtitle"):
         lines.append(app["subtitle"].rstrip(".") + ".")
-    base = app.get("base_app_name")
+    base = "" if app.get("kind") == "own" else app.get("base_app_name")
     by = f" by {app['developerName']}" if app.get("developerName") else ""
     if base:
         lines.append(f"A modified {base}{by}, built on {base} {latest['version']}.")

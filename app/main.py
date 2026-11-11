@@ -369,7 +369,7 @@ async def update_source(request: Request):
 
 APP_FIELDS = {"name", "subtitle", "developerName", "localizedDescription", "tintColor", "category",
               "iconURL", "screenshots", "use_appstore_screenshots", "featured", "github_repo",
-              "appstore_bundle_id", "base_app_name", "tweak_version_regex", "build", "order"}
+              "appstore_bundle_id", "base_app_name", "build", "order", "kind"}
 
 
 @app.post("/api/apps", dependencies=[admin])
@@ -390,6 +390,8 @@ async def create_app(request: Request):
         app_["developerName"] = repo.split("/")[0]
     if body.get("base_app_name"):
         app_["base_app_name"] = str(body["base_app_name"]).strip()
+    if body.get("kind") in ("tweak", "own"):
+        app_["kind"] = body["kind"]
     store.save()
     return app_
 
@@ -400,17 +402,22 @@ async def update_app(bundle_id: str, request: Request):
     if not app_:
         raise HTTPException(404)
     body = await request.json()
-    if "tweak_version_regex" in body:
-        try:
-            re.compile(body["tweak_version_regex"])
-        except re.error as e:
-            raise HTTPException(400, f"Tweak version pattern is not a valid regex: {e}")
+    if "kind" in body and body["kind"] not in ("tweak", "own"):
+        raise HTTPException(400, "Type must be a tweaked app or your own app.")
+    if body.get("kind") == "own":
+        app_["appstore"] = {}   # no App Store listing: no icon, screenshots or genre from it
     if "category" in body:
         # store the id AltStore understands; "" means use the App Store's
         body["category"] = category_id(body["category"])
-    before = store.build_target(app_)
+    before, kind_before = store.build_target(app_), app_.get("kind", "tweak")
     app_.update({k: v for k, v in body.items() if k in APP_FIELDS})
     store.save()
+    if app_.get("kind", "tweak") != kind_before:
+        # Same versions, new framing: rewrite each version's notes (release matched
+        # by the app's version or the tweak's, App Store notes only for tweaks).
+        await asyncio.gather(*(enrich_version(app_, v) for v in store.versions_for(bundle_id)),
+                             return_exceptions=True)
+        store.save()
     if store.build_target(app_) != before and builds.GITHUB_TOKEN:
         upstream.refresh_soon()   # the saved fork status was about the old repo
     return app_

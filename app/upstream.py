@@ -39,8 +39,12 @@ def release_version(rel: dict) -> str:
 
 
 def _published_tweak(bundle_id: str) -> str:
-    vs = [v for v in store.data["versions"] if v["bundleIdentifier"] == bundle_id and v.get("tweakVersion")]
-    return max((v["tweakVersion"] for v in vs), key=vtuple, default="")
+    """The newest version you've published to compare releases with: the tweak
+    version for a tweaked app, the app's own version for an app you made."""
+    own = (store.data["apps"].get(bundle_id) or {}).get("kind") == "own"
+    key = "version" if own else "tweakVersion"
+    vs = [v for v in store.data["versions"] if v["bundleIdentifier"] == bundle_id and v.get(key)]
+    return max((v[key] for v in vs), key=vtuple, default="")
 
 
 def current_fork(app: dict) -> dict | None:

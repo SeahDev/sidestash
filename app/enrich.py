@@ -54,6 +54,18 @@ async def github_release(repo: str, tweak_version: str | None) -> dict | None:
     }
 
 
+async def appstore_listed(bundle_id: str, country: str = "us") -> bool | None:
+    """True or False when the App Store answered; None when it couldn't be asked."""
+    try:
+        async with httpx.AsyncClient(timeout=20, headers=UA) as c:
+            r = await c.get("https://itunes.apple.com/lookup", params={"bundleId": bundle_id, "country": country})
+        if r.status_code != 200:
+            return None
+        return bool(r.json().get("results"))
+    except (httpx.HTTPError, ValueError):
+        return None
+
+
 async def appstore_lookup(bundle_id: str, country: str = "us") -> dict:
     if not bundle_id:
         return {}
@@ -81,22 +93,24 @@ async def appstore_lookup(bundle_id: str, country: str = "us") -> dict:
 
 def compose_notes(app: dict, version: dict) -> str:
     """The text shown under a version in AltStore."""
+    own = app.get("kind") == "own"   # your own app: no tweak version, no App Store notes
     parts = []
     if version.get("custom_notes"):
         parts.append(version["custom_notes"].strip())
 
     rel = version.get("github_release") or {}
     if rel.get("body"):
-        title = f"{app.get('name')} {version.get('tweakVersion') or rel.get('tag', '')}".strip()
-        parts.append(f"{title}\n{rel['body']}")
+        label = version.get("version") if own else (version.get("tweakVersion") or rel.get("tag", ""))
+        parts.append(f"{app.get('name')} {label}".strip() + f"\n{rel['body']}")
 
-    store_notes = version.get("appstore_notes") or {}
+    store_notes = {} if own else version.get("appstore_notes") or {}
     if store_notes.get("releaseNotes"):
         base = app.get("base_app_name") or "Base app"
         parts.append(f"{base} {store_notes.get('version', version.get('version'))}\n{store_notes['releaseNotes']}")
 
     if not parts:
-        base = app.get("base_app_name")
-        tv = version.get("tweakVersion")
+        # your own app: just its version, whatever was saved while it was a tweak
+        base = "" if own else app.get("base_app_name")
+        tv = "" if own else version.get("tweakVersion")
         parts.append(" · ".join(p for p in [f"{app.get('name')} {tv}" if tv else "", f"{base} {version.get('version')}" if base else f"Version {version.get('version')}"] if p))
     return "\n\n".join(parts)

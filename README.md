@@ -158,12 +158,17 @@ dashboard or run:
 
 ```sh
 SIDESTASH_URL=http://192.168.1.10:8686 SIDESTASH_TOKEN=<ADMIN_TOKEN> \
-  ./scripts/upload.sh packages/MyTweak_v1.4.0.ipa "Built with FLEX"
+  ./scripts/upload.sh packages/MyTweak_1.4.0_MyApp_2.3.1.ipa "Built with FLEX"
 ```
 
-Keep the file names the build produces: the tweak version (1.4.0 above) is read
-from them with the app's **Tweak version pattern** to find the matching GitHub
-release.
+**File names.** The IPA only records the base app's version, so the tweak's
+version comes from the file name. Name files
+`<Tweak>_<tweak version>_<App>_<app version>[_<variant>].ipa`, for example
+`Sparkle_1.6.1_Instagram_454.1.0.ipa` or `YTKACE_1.1.5_YouTube_21.33.6_iOS16.ipa`,
+and Sidestash reads the tweak version (1.6.1) from it. An .ipa named any other
+way is published without a tweak version; set it under **Versions → Edit**, or
+rename the file before uploading. Published IPAs use the same
+scheme with a short content hash added, e.g. `Sparkle_1.6.1_Instagram_454.1.0_09210ece.ipa`.
 
 ## Security
 
