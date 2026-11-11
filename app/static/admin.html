@@ -627,7 +627,7 @@ function appView(a){
     ${fact("Size", latest?fmtSize(latest.size):"—")}
     ${fact("Category", esc(cat))}
     ${fact("Requires", latest?.minOSVersion?`iOS ${esc(latest.minOSVersion)}`:"—", latest?.minOSVersion?"or later":"")}
-    ${isOwn(a) ? fact("Type", "Your app", "") : fact("App Store", st.version?esc(st.version):"—", esc(a.base_app_name||st.trackName||""))}
+    ${isOwn(a) ? fact("Type", "Custom App", "") : fact("App Store", st.version?esc(st.version):"—", esc(a.base_app_name||st.trackName||""))}
     ${fact("Last build", b?(b.status==="done"?"Published":b.status==="failed"?"Failed":"Running"):"—", b?fmtDay(b.started):"")}
   </div>
   <div class="segmented" role="tablist">
@@ -778,8 +778,8 @@ function listingForm(a){
   return `<h3 class="group-title">Store listing</h3>
     <div class="grid">
       <label class="field wide">Type<select data-f="kind" data-kind-picker>
-        <option value="tweak" ${own?"":"selected"}>Tweaked app: a modified App Store app</option>
-        <option value="own" ${own?"selected":""}>My own app</option></select></label>
+        <option value="tweak" ${own?"":"selected"}>Tweaked App</option>
+        <option value="own" ${own?"selected":""}>Custom App</option></select></label>
       ${field("name","Name",a.name)}${field("developerName","Developer",a.developerName)}
       ${field("subtitle","Subtitle",a.subtitle,"","wide")}
       ${field("tintColor","Tint color",a.tintColor,"#3A6EA5")}${categoryField(a)}
@@ -818,7 +818,7 @@ function chosenCategory(a){
 function categoryField(a){
   const names = S.categories, chosen = chosenCategory(a);
   return `<label class="field">Category<select data-f="category">
-    <option value="" ${chosen?"":"selected"}>Automatic (${esc(names[a.category_auto]||"Other")}, from the App Store)</option>
+    <option value="" ${chosen?"":"selected"}>Automatic (${esc(names[a.category_auto]||"Other")})</option>
     ${Object.entries(names).map(([id,name])=>`<option value="${id}" ${id===chosen?"selected":""}>${esc(name)}</option>`).join("")}
   </select></label>`;
 }
@@ -864,7 +864,7 @@ function versionsList(a){
 function newAppView(){
   return `<div class="page-top"><div><p class="eyebrow">Manage</p><h1 class="large-title">Add app</h1></div></div>
   <section class="shelf">${shelfHead("Upload its .ipa", `<span class="note">Fastest</span>`)}
-    <p class="hint">The app is created from the file's bundle ID, name and version: a tweaked app, or your own (a bundle ID the App Store doesn't list is set up as your own app).</p>
+    <p class="hint">The app is created from the file's bundle ID, name and version: a Tweaked App, or a Custom App (a bundle ID the App Store doesn't list is set up as a Custom App).</p>
     <label class="drop" id="drop" tabindex="0"><input type="file" accept=".ipa" id="ipaFile" hidden>
       <strong>Drop an .ipa here</strong><span>or choose a file</span>
       <div class="progress" id="prog"><i></i></div></label>
@@ -874,8 +874,8 @@ function newAppView(){
     <div class="group" id="newApp" style="margin-top:16px">
       <div class="grid">
         <label class="field wide">Type<select data-f="kind" data-kind-picker>
-          <option value="tweak">Tweaked app: a modified App Store app</option>
-          <option value="own">My own app</option></select></label>
+          <option value="tweak">Tweaked App</option>
+          <option value="own">Custom App</option></select></label>
         ${field("bundleIdentifier","Bundle ID","","com.example.app")}
         ${field("name","Name","","App name")}
         ${field("github_repo","GitHub repo, for release notes","","owner/repo")}
@@ -1143,7 +1143,7 @@ function wire(){
       if(act==="saveListing"){
         const body = collect($("#listing")), was = S.apps[appId].kind || "tweak";
         await api(`/api/apps/${appId}`, {method:"PUT", body: JSON.stringify(body)});
-        toast(body.kind && body.kind !== was ? (body.kind==="own" ? "Now your own app. Version notes rewritten." : "Now a tweaked app. Version notes rewritten.") : "Listing saved") }
+        toast(body.kind && body.kind !== was ? (body.kind==="own" ? "Now a Custom App. Version notes rewritten." : "Now a Tweaked App. Version notes rewritten.") : "Listing saved") }
       if(act==="appstore"){ const i = await api(`/api/apps/${appId}/appstore`, {method:"POST"}); toast(`App Store: ${i.trackName} ${i.version}`) }
       if(act==="deleteApp"){
         const a = S.apps[appId], n = versionsOf(appId).length;

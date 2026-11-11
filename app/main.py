@@ -403,7 +403,7 @@ async def update_app(bundle_id: str, request: Request):
         raise HTTPException(404)
     body = await request.json()
     if "kind" in body and body["kind"] not in ("tweak", "own"):
-        raise HTTPException(400, "Type must be a tweaked app or your own app.")
+        raise HTTPException(400, "Type must be Tweaked App or Custom App.")
     if body.get("kind") == "own":
         app_["appstore"] = {}   # no App Store listing: no icon, screenshots or genre from it
     if "category" in body:
