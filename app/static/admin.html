@@ -169,7 +169,7 @@ main{min-width:0;padding:34px clamp(20px,4vw,52px) 80px;max-width:1080px}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
 .check{display:flex;gap:10px;align-items:center;font-size:15px;color:var(--text);min-height:32px}
 .check input{width:20px;height:20px;accent-color:var(--accent);flex:none}
-.check.wide{grid-column:1/-1}
+.check.wide,.hint.wide{grid-column:1/-1}
 .urlfield{display:flex;flex-flow:row wrap;gap:10px;align-items:flex-end}
 .urlfield > .field{flex:1 1 240px}
 .urlfield .pill{min-height:38px}
@@ -392,7 +392,12 @@ function cmpVersion(a,b){ const x=vnum(a), y=vnum(b);
   return b.date.localeCompare(a.date); }
 const versionsOf = bid => S.versions.filter(v=>v.bundleIdentifier===bid).sort(cmpVersion);
 const buildsOf = bid => S.builds.filter(b=>b.bundleIdentifier===bid);
-const iconFor = a => a.iconURL || a.appstore?.artworkUrl512 || "";
+// Same choice as app_icon() in source.py: the picked icon, else whichever other one exists.
+const iconFor = a => {
+  const custom = a.iconURL || "", ipa = a.ipa_icon || "", store = a.kind === "own" ? "" : a.appstore?.artworkUrl512 || "";
+  const order = {custom: [custom, ipa, store], appstore: [store, ipa, custom]}[a.icon_source] || [ipa, store, custom];
+  return order.find(Boolean) || "";
+};
 function iconImg(url, name, cls){
   const ph = `<span class="${cls} ph" aria-hidden="true">${esc((name||"?").trim()[0]||"?")}</span>`;
   return url ? `<img class="${cls}" alt="" src="${esc(url)}" onerror="this.outerHTML='${ph.replace(/"/g,"&quot;")}'">` : ph;
@@ -773,6 +778,11 @@ function runsPanel(a){
 }
 
 /* ---------------- listing editor + preview ---------------- */
+function iconHint(a, src){
+  if(src==="custom") return "Paste a link, or press Upload icon.";
+  if(src==="appstore") return a.appstore?.artworkUrl512 ? "The App Store's 512 px icon." : "No App Store icon found, so the .ipa's is used.";
+  return a.ipa_icon ? "The newest version's own icon, up to 152 px." : "No icon found in the .ipa yet, so the App Store's is used.";
+}
 function listingForm(a){
   const own = isOwn(a);
   return `<h3 class="group-title">Store listing</h3>
@@ -783,7 +793,12 @@ function listingForm(a){
       ${field("name","Name",a.name)}${field("developerName","Developer",a.developerName)}
       ${field("subtitle","Subtitle",a.subtitle,"","wide")}
       ${field("tintColor","Tint color",a.tintColor,"#3A6EA5")}${categoryField(a)}
-      ${field("iconURL","Icon URL",a.iconURL,own?"Or upload one below":"Blank uses the App Store icon","wide")}
+      <label class="field">Icon<select data-f="icon_source" data-icon-picker>
+        <option value="ipa" ${(a.icon_source||"ipa")==="ipa"?"selected":""}>From the .ipa</option>
+        ${own ? "" : `<option value="appstore" ${a.icon_source==="appstore"?"selected":""}>From the App Store</option>`}
+        <option value="custom" ${a.icon_source==="custom"?"selected":""}>Custom</option></select></label>
+      <div data-icon-custom ${a.icon_source==="custom"?"":"hidden"} style="display:contents">${field("iconURL","Icon link",a.iconURL,"https://… or use Upload icon below")}</div>
+      <p class="hint wide" data-icon-hint style="margin:0">${iconHint(a, a.icon_source||"ipa")}</p>
       <label class="field wide">Description<textarea data-f="localizedDescription" style="min-height:150px" placeholder="Blank writes one from the subtitle and repo">${esc(a.localizedDescription)}</textarea></label>
       <label class="field wide">Screenshot links, one per line<textarea data-f="screenshots" autocapitalize="off">${esc((a.screenshots||[]).join("\n"))}</textarea></label>
       <label class="check wide" data-tweak-only ${own?"hidden":""}><input type="checkbox" data-f="use_appstore_screenshots" ${a.use_appstore_screenshots?"checked":""}> Use the App Store screenshots when the list above is empty</label>
@@ -828,7 +843,7 @@ function renderPreview(a){
   const latest = versionsOf(a.bundleIdentifier).find(v=>v.published);
   const shots = (f.screenshots && f.screenshots.length) ? f.screenshots : (f.use_appstore_screenshots ? (a.appstore?.screenshotUrls||[]) : []);
   $("#preview").innerHTML = `<div class="pv">
-    <div class="pv-head">${iconImg(f.iconURL || a.appstore?.artworkUrl512 || "", f.name, "icon m")}
+    <div class="pv-head">${iconImg(iconFor({...a, ...f}), f.name, "icon m")}
       <div style="min-width:0"><div class="pv-name">${esc(f.name||"Untitled")}</div><div class="pv-sub">${esc(f.subtitle)}</div><div class="pv-dev">${esc(f.developerName)}</div></div></div>
     ${shots.length?`<div class="pv-shots">${shots.slice(0,8).map(u=>`<img alt="" src="${esc(u)}">`).join("")}</div>`:""}
     ${f.localizedDescription?`<p class="pv-desc" style="margin-top:16px">${esc(f.localizedDescription)}</p>`:""}
@@ -1104,7 +1119,7 @@ function wire(){
     $("#listing").addEventListener("input", ()=>renderPreview(a));
     wireDrop(v => { if(!v.duplicate && v.bundleIdentifier!==appId){ load().then(()=>setView("app:"+v.bundleIdentifier)); return true } });
     const icon = $("#iconFile");
-    icon.onchange = async()=>{ try{ await uploadWithProgress(`/api/apps/${appId}/icon`, icon.files[0]); toast("Icon updated") }catch(e){ toast(e.message,true) } load() };
+    icon.onchange = async()=>{ try{ await uploadWithProgress(`/api/apps/${appId}/icon`, icon.files[0]); toast("Icon updated. Icon is now set to Custom.") }catch(e){ toast(e.message,true) } load() };
     wireLive();
     const b = a.build || {};
     const key = [appId, buildRepo(b), b.workflow, buildRef(b)].join("|");
@@ -1181,6 +1196,14 @@ document.addEventListener("click", async e => {
 });
 
 document.addEventListener("change", e => {
+  const ip = e.target.closest("[data-icon-picker]");
+  if(ip){
+    const form = ip.closest(".group") || document, a = S.apps[view.slice(4)] || {};
+    $$("[data-icon-custom]", form).forEach(el => el.hidden = ip.value !== "custom");
+    $$("[data-icon-hint]", form).forEach(el => el.innerHTML = iconHint(a, ip.value));
+    if(a.bundleIdentifier) renderPreview(a);
+    return;
+  }
   const pick = e.target.closest("[data-kind-picker]"); if(!pick) return;
   const own = pick.value === "own", form = pick.closest(".group") || document;
   $$("[data-tweak-only]", form).forEach(el => el.hidden = own);

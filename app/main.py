@@ -19,6 +19,7 @@ from starlette.background import BackgroundTask
 
 from . import builds, news, tools, upstream, uploads, workflow
 from .enrich import compose_notes
+from . import ingest as ingest_mod
 from .ingest import enrich_version, ingest, refresh_appstore, slug
 from .ipa import IPAError, inspect_ipa
 from .source import CATEGORIES, app_category, build_source, category_id
@@ -39,6 +40,7 @@ async def lifespan(_app):
     store.migrate()
     uploads.prune()
     builds.resume_unfinished()
+    asyncio.get_running_loop().run_in_executor(None, ingest_mod.backfill_ipa_icons)
     tasks = [asyncio.create_task(upstream.loop()), asyncio.create_task(uploads.prune_loop())]
     yield
     for t in tasks:
@@ -368,7 +370,7 @@ async def update_source(request: Request):
 
 
 APP_FIELDS = {"name", "subtitle", "developerName", "localizedDescription", "tintColor", "category",
-              "iconURL", "screenshots", "use_appstore_screenshots", "featured", "github_repo",
+              "iconURL", "icon_source", "screenshots", "use_appstore_screenshots", "featured", "github_repo",
               "appstore_bundle_id", "base_app_name", "build", "order", "kind"}
 
 
@@ -402,6 +404,8 @@ async def update_app(bundle_id: str, request: Request):
     if not app_:
         raise HTTPException(404)
     body = await request.json()
+    if "icon_source" in body and body["icon_source"] not in ("ipa", "appstore", "custom"):
+        raise HTTPException(400, "Icon must come from the .ipa, the App Store, or a custom image.")
     if "kind" in body and body["kind"] not in ("tweak", "own"):
         raise HTTPException(400, "Type must be Tweaked App or Custom App.")
     if body.get("kind") == "own":
@@ -509,6 +513,7 @@ async def upload_icon(bundle_id: str, file: UploadFile = File(...)):
     name = f"{slug(bundle_id)}-{new_id()}{ext}"
     (ICON_DIR / name).write_bytes(await file.read())
     app_["iconURL"] = f"/icons/{name}"
+    app_["icon_source"] = "custom"
     store.save()
     return app_
 
@@ -537,6 +542,8 @@ async def patch_version(vid: str, request: Request):
     if "custom_notes" in body and "localizedDescription" not in body:
         v["localizedDescription"] = compose_notes(store.data["apps"][v["bundleIdentifier"]], v)
     store.save()
+    if "published" in body:   # the newest published version may have changed, and its icon with it
+        await asyncio.to_thread(ingest_mod.refresh_ipa_icon, store.data["apps"][v["bundleIdentifier"]])
     return v
 
 
@@ -558,6 +565,9 @@ def delete_version(vid: str):
     (IPA_DIR / v["file"]).unlink(missing_ok=True)
     store.data["versions"].remove(v)
     store.save()
+    app_ = store.data["apps"].get(v["bundleIdentifier"])
+    if app_:
+        ingest_mod.refresh_ipa_icon(app_)   # the newest remaining version's icon
     return {"ok": True}
 
 

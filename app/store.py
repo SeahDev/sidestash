@@ -24,7 +24,9 @@ DEFAULT_APP = {
     "localizedDescription": "",
     "tintColor": "#3A6EA5",
     "category": "",                     # blank: use the App Store's category
-    "iconURL": "",
+    "iconURL": "",                      # a custom icon (link or upload)
+    "icon_source": "ipa",               # "ipa", "appstore" or "custom"; falls back when one is missing
+    "ipa_icon": "",                     # /icons/... taken from the newest version's .ipa
     "screenshots": [],
     "use_appstore_screenshots": True,
     "featured": True,                   # listed in the source's featuredApps
@@ -103,6 +105,9 @@ class Store:
         # that are still verbatim copies so the tweak description is used.
         for app in self.data["apps"].values():
             if app.pop("tweak_version_regex", None) is not None:   # replaced by the standard file name
+                changed = True
+            if "icon_source" not in app:    # before the choice existed: a set icon was custom, else the App Store's
+                app["icon_source"] = "custom" if app.get("iconURL") else "ipa"
                 changed = True
             if "kind" not in app:           # every app before this was a tweak
                 app["kind"] = "tweak"

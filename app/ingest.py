@@ -1,13 +1,15 @@
 """Turn an .ipa on disk into a published version in the source."""
 import asyncio
+import hashlib
 import os
 import re
 import shutil
 from pathlib import Path
 
 from . import enrich
-from .ipa import inspect_ipa, sha256_file
-from .store import IPA_DIR, new_id, now_iso, store
+from .ipa import extract_icon, inspect_ipa, sha256_file
+from .source import version_key
+from .store import ICON_DIR, IPA_DIR, new_id, now_iso, store
 
 
 def slug(s: str) -> str:
@@ -33,6 +35,40 @@ def tweak_version_from(filename: str) -> str:
     (set it by hand under Versions → Edit)."""
     parsed = parse_name(filename)
     return parsed["tweak_version"] if parsed else ""
+
+
+def refresh_ipa_icon(app: dict) -> bool:
+    """Take the app's icon from its newest published version's .ipa. Returns True
+    if it changed. Blocking (reads the .ipa): run it in a thread."""
+    mine = [v for v in store.data["versions"] if v["bundleIdentifier"] == app["bundleIdentifier"]]
+    published = [v for v in mine if v.get("published")] or mine
+    if not published:
+        return False
+    newest = max(published, key=version_key)
+    current = app.get("ipa_icon", "")
+    if app.get("ipa_icon_from") == newest["id"] and (not current or (ICON_DIR / current.rsplit("/", 1)[-1]).is_file()):
+        return False
+    png = extract_icon(IPA_DIR / newest["file"])
+    url = ""
+    if png:
+        name = f"{slug(app['bundleIdentifier'])}-ipa-{hashlib.sha256(png).hexdigest()[:12]}.png"
+        if not (ICON_DIR / name).is_file():
+            (ICON_DIR / name).write_bytes(png)
+        url = f"/icons/{name}"
+    if current and current != url and current.startswith(f"/icons/{slug(app['bundleIdentifier'])}-ipa-"):
+        (ICON_DIR / current.rsplit("/", 1)[-1]).unlink(missing_ok=True)   # the previous version's icon
+    app["ipa_icon"], app["ipa_icon_from"] = url, newest["id"]
+    store.save()
+    return current != url
+
+
+def backfill_ipa_icons() -> None:
+    """At startup: icons for versions published before icons were taken from the .ipa."""
+    for app in list(store.data["apps"].values()):
+        try:
+            refresh_ipa_icon(app)
+        except Exception:
+            pass
 
 
 def is_own(app: dict) -> bool:
@@ -142,4 +178,8 @@ async def ingest(tmp_path: Path, original_name: str, custom_notes: str = "", ori
         v["enrich_error"] = str(e)
     store.data["versions"].append(v)
     store.save()
+    try:
+        await asyncio.to_thread(refresh_ipa_icon, app)
+    except Exception:
+        pass   # the version is published either way; the icon is a nicety
     return v

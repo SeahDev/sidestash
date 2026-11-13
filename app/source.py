@@ -52,6 +52,15 @@ def screenshot_entry(url: str) -> dict:
     return entry
 
 
+def app_icon(app: dict) -> str:
+    """The icon the source lists: the chosen one, else whichever of the others exists."""
+    custom, ipa = app.get("iconURL", ""), app.get("ipa_icon", "")
+    store_icon = "" if app.get("kind") == "own" else (app.get("appstore") or {}).get("artworkUrl512", "")
+    order = {"custom": (custom, ipa, store_icon), "appstore": (store_icon, ipa, custom)}.get(
+        app.get("icon_source") or "ipa", (ipa, store_icon, custom))
+    return next((u for u in order if u), "")
+
+
 def version_key(v):
     """Newest version number first; upload date breaks ties (same base, newer tweak)."""
     nums = tuple(int(x) for x in re.findall(r"\d+", v["version"]))
@@ -86,7 +95,7 @@ def build_source(data: dict, base_url: str) -> dict:
             continue
         latest = versions[0]
         store_info = app.get("appstore") or {}
-        icon = app.get("iconURL") or store_info.get("artworkUrl512", "")
+        icon = app_icon(app)
         if icon.startswith("/"):
             icon = base + icon
         screenshots = app.get("screenshots") or (
