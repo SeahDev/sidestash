@@ -778,6 +778,12 @@ function runsPanel(a){
 }
 
 /* ---------------- listing editor + preview ---------------- */
+function shotsHint(a){
+  const copied = Object.keys(a.screenshot_mirrors||{}).length, problems = a.screenshot_problems||[];
+  return [copied ? `${copied} from private repos copied here, so phones can load them. They're re-copied when you save and with each update check.` :
+            "Links into a private GitHub repo you've given a token to are copied here, so phones can load them.",
+          ...problems.map(p=>`<span style="color:var(--red)">${esc(p)}</span>`)].join("<br>");
+}
 function iconHint(a, src){
   if(src==="custom") return "Paste a link, or press Upload icon.";
   if(src==="appstore") return a.appstore?.artworkUrl512 ? "The App Store's 512 px icon." : "No App Store icon found, so the .ipa's is used.";
@@ -801,6 +807,7 @@ function listingForm(a){
       <p class="hint wide" data-icon-hint style="margin:0">${iconHint(a, a.icon_source||"ipa")}</p>
       <label class="field wide">Description<textarea data-f="localizedDescription" style="min-height:150px" placeholder="Blank writes one from the subtitle and repo">${esc(a.localizedDescription)}</textarea></label>
       <label class="field wide">Screenshot links, one per line<textarea data-f="screenshots" autocapitalize="off">${esc((a.screenshots||[]).join("\n"))}</textarea></label>
+      <p class="hint wide" style="margin:0">${shotsHint(a)}</p>
       <label class="check wide" data-tweak-only ${own?"hidden":""}><input type="checkbox" data-f="use_appstore_screenshots" ${a.use_appstore_screenshots?"checked":""}> Use the App Store screenshots when the list above is empty</label>
       <label class="check wide"><input type="checkbox" data-f="featured" ${a.featured!==false?"checked":""}> Featured (shown at the top of the source in AltStore)</label>
     </div>
@@ -841,7 +848,8 @@ function categoryField(a){
 function renderPreview(a){
   const f = collect($("#listing"));
   const latest = versionsOf(a.bundleIdentifier).find(v=>v.published);
-  const shots = (f.screenshots && f.screenshots.length) ? f.screenshots : (f.use_appstore_screenshots ? (a.appstore?.screenshotUrls||[]) : []);
+  const shots = ((f.screenshots && f.screenshots.length) ? f.screenshots : (f.use_appstore_screenshots ? (a.appstore?.screenshotUrls||[]) : []))
+    .map(u => a.screenshot_mirrors?.[u]?.path || u);   // private-repo links show Sidestash's copy
   $("#preview").innerHTML = `<div class="pv">
     <div class="pv-head">${iconImg(iconFor({...a, ...f}), f.name, "icon m")}
       <div style="min-width:0"><div class="pv-name">${esc(f.name||"Untitled")}</div><div class="pv-sub">${esc(f.subtitle)}</div><div class="pv-dev">${esc(f.developerName)}</div></div></div>

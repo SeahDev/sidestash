@@ -42,9 +42,15 @@ def app_category(app: dict) -> str:
     return GENRES.get(genre, "other")
 
 
-def screenshot_entry(url: str) -> dict:
+def screenshot_entry(url: str, mirror: dict | None = None, base: str = "") -> dict:
     """AltStore 2 screenshot object. Sizes help store apps lay them out before loading;
-    App Store image links end in e.g. /392x696bb.jpg, which gives them."""
+    App Store image links end in e.g. /392x696bb.jpg, which gives them. A link into a
+    private repo is replaced by Sidestash's copy (shots.py)."""
+    if mirror:
+        entry = {"imageURL": base + mirror["path"]}
+        if mirror.get("width"):
+            entry["width"], entry["height"] = mirror["width"], mirror["height"]
+        return entry
     entry = {"imageURL": url}
     m = re.search(r"/(\d+)x(\d+)[a-z]*\.(?:jpe?g|png|webp)$", url)
     if m:
@@ -101,6 +107,8 @@ def build_source(data: dict, base_url: str) -> dict:
         screenshots = app.get("screenshots") or (
             store_info.get("screenshotUrls", []) if app.get("use_appstore_screenshots") else []
         )
+        mirrors = app.get("screenshot_mirrors") or {}
+        shots = [screenshot_entry(u, mirrors.get(u), base) for u in screenshots]
         vs = []
         for v in versions:
             entry = {
@@ -125,8 +133,8 @@ def build_source(data: dict, base_url: str) -> dict:
             "tintColor": app.get("tintColor", "").lstrip("#"),
             "category": app_category(app),
             # AltStore 2 objects, plus the AltStore 1 list of links that many store apps still read.
-            "screenshots": [screenshot_entry(u) for u in screenshots],
-            "screenshotURLs": screenshots,
+            "screenshots": shots,
+            "screenshotURLs": [s["imageURL"] for s in shots],
             "versions": vs,
             "appPermissions": {
                 "entitlements": latest.get("entitlements", []),

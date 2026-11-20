@@ -17,7 +17,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Upload
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from starlette.background import BackgroundTask
 
-from . import builds, news, tools, upstream, uploads, workflow
+from . import builds, news, shots, tools, upstream, uploads, workflow
 from .enrich import compose_notes
 from . import ingest as ingest_mod
 from .ingest import enrich_version, ingest, refresh_appstore, slug
@@ -416,6 +416,12 @@ async def update_app(bundle_id: str, request: Request):
     before, kind_before = store.build_target(app_), app_.get("kind", "tweak")
     app_.update({k: v for k, v in body.items() if k in APP_FIELDS})
     store.save()
+    if "screenshots" in body:
+        try:
+            await shots.sync(app_)
+        except Exception as e:
+            app_["screenshot_problems"] = [f"Couldn't copy screenshots: {e}"]
+            store.save()
     if app_.get("kind", "tweak") != kind_before:
         # Same versions, new framing: rewrite each version's notes (release matched
         # by the app's version or the tweak's, App Store notes only for tweaks).
@@ -445,6 +451,8 @@ def delete_app(bundle_id: str, versions: bool = False):
     if folder.is_relative_to(IPA_DIR.resolve()) and folder.is_dir() and not any(folder.iterdir()):
         folder.rmdir()
     store.data["builds"] = [b for b in store.data["builds"] if b["bundleIdentifier"] != bundle_id]
+    for m in (store.data["apps"][bundle_id].get("screenshot_mirrors") or {}).values():
+        (ICON_DIR / m["path"].rsplit("/", 1)[-1]).unlink(missing_ok=True)
     store.data["apps"].pop(bundle_id, None)
     store.save()
     return {"ok": True, "versions_deleted": len(mine)}

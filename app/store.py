@@ -28,6 +28,8 @@ DEFAULT_APP = {
     "icon_source": "ipa",               # "ipa", "appstore" or "custom"; falls back when one is missing
     "ipa_icon": "",                     # /icons/... taken from the newest version's .ipa
     "screenshots": [],
+    "screenshot_mirrors": {},           # link -> {"path": "/icons/...", width, height}: copies of private-repo images
+    "screenshot_problems": [],          # why a private-repo link couldn't be copied
     "use_appstore_screenshots": True,
     "featured": True,                   # listed in the source's featuredApps
     # "tweak": a modified App Store app (tweak version, base app, App Store info).

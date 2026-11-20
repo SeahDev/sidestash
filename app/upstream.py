@@ -14,6 +14,7 @@ from urllib.parse import quote
 import httpx
 
 from . import tools
+from . import shots
 from .enrich import GITHUB_RELEASES_TOKEN, gh_headers
 from .store import now_iso, store
 
@@ -222,4 +223,5 @@ async def loop():
             await check_all()
         except Exception:
             log.exception("update check failed")
+        await shots.sync_all()   # screenshots changed in their private repos
         await asyncio.sleep(CHECK_HOURS * 3600)
