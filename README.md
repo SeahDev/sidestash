@@ -65,6 +65,7 @@ change the image name and the URLs in it to your own.
 | `ADMIN_TOKEN` | Optional. Long random string for `scripts/upload.sh`. |
 | `PORT` | Port the server listens on inside the container (default `8686`). Only matters with host or custom networking. |
 | `GITHUB_TOKEN` | Fine-grained token limited to **Only select repositories** (your build repo, or your forks): **Actions: read and write** and **Contents: read**. To update pinned build tools from the dashboard, raise **Contents** to read and write; to use Sync fork on a fork, also add **Workflows: read and write**. Give it nothing else. Also lifts the API rate limit for changelogs. |
+| `GITHUB_RELEASES_TOKEN` | Optional. For release notes from private repos `GITHUB_TOKEN` can't read, such as ones owned by another account: a fine-grained token made on that account, limited to those repos, with **Contents: read** only. Used only for release notes, never for builds. |
 | `UPLOAD_LINK_HOURS` / `UPLOAD_LINK_DOWNLOADS` | Lifetime of the private links for decrypted IPAs you upload for builds (default 3 hours, 5 downloads). |
 | `PUID` / `PGID` | Docker only: the user the server runs as (default `99`/`100`, Unraid's nobody:users). It never runs as root. |
 | `UPDATE_CHECK_HOURS` | How often to check the original repos for releases and your forks for new commits (default `6`; `0` turns it off). |

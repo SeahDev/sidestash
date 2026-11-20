@@ -5,13 +5,18 @@ import re
 import httpx
 
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN", "").strip()
+# Optional read-only token from another account, for release notes in private
+# repos GITHUB_TOKEN can't see (a fine-grained token only reaches its own
+# account's repos). Never used for builds.
+GITHUB_RELEASES_TOKEN = os.environ.get("GITHUB_RELEASES_TOKEN", "").strip()
 UA = {"User-Agent": "sidestash"}
 
 
-def gh_headers() -> dict:
+def gh_headers(token: str | None = None) -> dict:
     h = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", **UA}
-    if GITHUB_TOKEN:
-        h["Authorization"] = f"Bearer {GITHUB_TOKEN}"
+    token = GITHUB_TOKEN if token is None else token
+    if token:
+        h["Authorization"] = f"Bearer {token}"
     return h
 
 
@@ -32,8 +37,12 @@ async def github_release(repo: str, tweak_version: str | None) -> dict | None:
     """Release matching the tweak version, else the newest stable release."""
     if not repo:
         return None
-    async with httpx.AsyncClient(timeout=20, headers=gh_headers()) as c:
-        r = await c.get(f"https://api.github.com/repos/{repo}/releases", params={"per_page": 30})
+    url = f"https://api.github.com/repos/{repo}/releases"
+    async with httpx.AsyncClient(timeout=20) as c:
+        r = await c.get(url, params={"per_page": 30}, headers=gh_headers())
+        if r.status_code in (401, 403, 404) and GITHUB_RELEASES_TOKEN:
+            # A private repo only the releases token can read (GitHub says 404 for those).
+            r = await c.get(url, params={"per_page": 30}, headers=gh_headers(GITHUB_RELEASES_TOKEN))
         if r.status_code != 200:
             return None
         releases = [x for x in r.json() if not x.get("draft")]

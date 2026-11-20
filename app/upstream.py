@@ -14,7 +14,7 @@ from urllib.parse import quote
 import httpx
 
 from . import tools
-from .enrich import gh_headers
+from .enrich import GITHUB_RELEASES_TOKEN, gh_headers
 from .store import now_iso, store
 
 log = logging.getLogger("upstream")
@@ -82,6 +82,9 @@ def mark_newer(rel: dict, bundle_id: str) -> dict:
 
 async def _latest_release(c: httpx.AsyncClient, repo: str) -> dict | None:
     r = await c.get(f"{API}/repos/{repo}/releases", params={"per_page": 10})
+    if r.status_code in (401, 403, 404) and GITHUB_RELEASES_TOKEN:   # a private repo only it can read
+        r = await c.get(f"{API}/repos/{repo}/releases", params={"per_page": 10},
+                        headers=gh_headers(GITHUB_RELEASES_TOKEN))
     if r.status_code == 404:
         raise SyncError(f"GitHub can't find {repo}.")
     r.raise_for_status()
